@@ -49,6 +49,7 @@ def load_spreadsheet(filename):
                 res.append(
                     Term(
                         "cell",
+                        Constant(1),
                         Constant(cell.row),
                         Constant(cell.col_idx),
                         Constant(cell.value),
@@ -73,6 +74,7 @@ def load_csv(filename):
                     result.append(
                         Term(
                             "cell",
+                            Constant(1),
                             Constant(i),
                             Constant(j),
                             Constant(cell),
@@ -81,9 +83,15 @@ def load_csv(filename):
     return result
 
 
-@problog_export_nondet("+list", "-term")
-def detect_tables(cell_terms):
-    raise RuntimeError(repr(cell_terms))
+@problog_export_nondet("+term", "-term")
+def detect_tables(scope, **kwargs):
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+    q = engine.query(
+        database, Term("':'", scope, Term("'cell'", *[None] * 4)), subcall=True
+    )
+
+    raise RuntimeError(q)
 
 
 def cells_to_matrix(cell_term_list):
@@ -91,18 +99,20 @@ def cells_to_matrix(cell_term_list):
     for cell_term in cell_term_list:
         y, x = cell_term.args[0].value, cell_term.args[1].value
         if min_y is None or y < min_y:
-           min_y = y
+            min_y = y
         if max_y is None or y > max_y:
-           max_y = y
+            max_y = y
         if min_x is None or x < min_x:
-           min_x = x
+            min_x = x
         if max_x is None or x > max_x:
-           max_x = x
+            max_x = x
     row = max_y - 1
     column = max_x - 1
     matrix = np.empty(shape=(row, column))
 
     for cell_term in cell_term_list:
-        matrix[cell_term.args[0].value-1, cell_term.args[1].value-1] = cell_term.args[2].value
+        matrix[
+            cell_term.args[0].value - 1, cell_term.args[1].value - 1
+        ] = cell_term.args[2].value
 
     return matrix
