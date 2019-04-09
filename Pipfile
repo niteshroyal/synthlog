@@ -9,6 +9,7 @@ verify_ssl = true
 white = "*"
 openpyxl = "*"
 problog = "*"
+synthlog = {editable = true,path = "."}
 
 [requires]
 python_version = "3.6"
