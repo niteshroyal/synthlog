@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import numpy
 from problog import get_evaluatable
 from problog.extern import (
     problog_export,
@@ -82,6 +83,12 @@ def load_csv(filename):
     return result
 
 
-@problog_export_nondet("+list", "-term")
-def detect_tables(cell_terms):
-    raise RuntimeError(repr(cell_terms))
+@problog_export_nondet("+term", "-term")
+def detect_tables(scope, **kwargs):
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+    q = engine.query(
+        database, Term("':'", scope, Term("'cell'", *[None] * 4)), subcall=True
+    )
+
+    raise RuntimeError(q)

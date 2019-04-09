@@ -19,8 +19,5 @@ collect_scope(Scope, Pred, X) :- (Scope:Y, Y =.. [Pred|_]) => Scope / raw(Y, X).
 magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 % query(magic_cells:_).
 
-detect(Scope, X) :- collect_scope(Scope, cell, L), detect_tables(L, X).
-magic_tables:X :- detect(magic_cells, X).
+magic_tables:X :- detect_tables(Scope, X).
 query(magic_tables:_).
-
-
