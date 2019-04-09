@@ -8,7 +8,7 @@ verify_ssl = true
 [packages]
 white = "*"
 openpyxl = "*"
-problog = "*"
+problog = {editable = true,git = "https://bitbucket.org/problog/problog.git"}
 synthlog = {editable = true,path = "."}
 
 [requires]
