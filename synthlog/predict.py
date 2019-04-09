@@ -10,15 +10,7 @@ from problog.extern import (
 import sys
 
 
-from problog.logic import (
-    Term,
-    Object,
-    term2list,
-    Constant,
-    is_list,
-    term2str,
-    Var,
-)
+from problog.logic import Term, Object, term2list, Constant, is_list, term2str, Var
 from problog.engine_unify import unify_value, UnifyError
 
 sys.path.append(".")
@@ -40,9 +32,7 @@ def get_mercs_classifier(params):
 
 @problog_export("+term", "+term", "-term")
 def sklearn_classifier(classifier_name, params):
-    return Object(
-        predictors.ScikitLearnClassifierWrapper(classifier_name, params)
-    )
+    return Object(predictors.ScikitLearnClassifierWrapper(classifier_name, params))
 
 
 @problog_export("+term", "+term", "-term")
