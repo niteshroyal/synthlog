@@ -17,6 +17,9 @@ import numpy as np
 
 from problog.program import PrologString
 
+from tacle import tables_from_cells
+from tacle.indexing import Orientation
+
 
 @problog_export_nondet("+str", "-term")
 def load_spreadsheet(filename):
@@ -49,7 +52,6 @@ def load_spreadsheet(filename):
                 res.append(
                     Term(
                         "cell",
-                        Constant(1),
                         Constant(cell.row),
                         Constant(cell.col_idx),
                         Constant(cell.value),
@@ -74,9 +76,8 @@ def load_csv(filename):
                     result.append(
                         Term(
                             "cell",
-                            Constant(1),
-                            Constant(i),
-                            Constant(j),
+                            Constant(i + 1),
+                            Constant(j + 1),
                             Constant(cell),
                         )
                     )
@@ -87,11 +88,14 @@ def load_csv(filename):
 def detect_tables(scope, **kwargs):
     engine = kwargs["engine"]
     database = kwargs["database"]
-    q = engine.query(
-        database, Term("':'", scope, Term("'cell'", *[None] * 4)), subcall=True
-    )
-
-    raise RuntimeError(q)
+    cell_term_list = [
+        t[1]
+        for t in engine.query(database, Term("':'", scope, None), subcall=True)
+        if t[1].functor == "cell"
+    ]
+    matrix = cells_to_matrix(cell_term_list)
+    tables = tables_from_cells(matrix, Orientation.vertical)
+    raise RuntimeError(tables)
 
 
 def cells_to_matrix(cell_term_list):
@@ -106,9 +110,9 @@ def cells_to_matrix(cell_term_list):
             min_x = x
         if max_x is None or x > max_x:
             max_x = x
-    row = max_y - 1
-    column = max_x - 1
-    matrix = np.empty(shape=(row, column))
+    row = max_y
+    column = max_x
+    matrix = np.empty(shape=(row, column), dtype=np.object)
 
     for cell_term in cell_term_list:
         matrix[
