@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+dill = "*"
 white = "*"
 openpyxl = "*"
 problog = {editable = true,git = "https://bitbucket.org/problog/problog.git"}
