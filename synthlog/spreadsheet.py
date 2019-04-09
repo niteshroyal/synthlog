@@ -1,11 +1,7 @@
 from __future__ import print_function
 
 from problog import get_evaluatable
-from problog.extern import (
-    problog_export,
-    problog_export_nondet,
-    problog_export_raw,
-)
+from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
 from problog.logic import Term, term2list, Constant, unquote
 from problog.errors import UserError, InvalidValue
@@ -74,12 +70,7 @@ def load_csv(filename):
             for j, cell in enumerate(row):
                 if cell:
                     result.append(
-                        Term(
-                            "cell",
-                            Constant(i + 1),
-                            Constant(j + 1),
-                            Constant(cell),
-                        )
+                        Term("cell", Constant(i + 1), Constant(j + 1), Constant(cell))
                     )
     return result
 
@@ -94,8 +85,45 @@ def detect_tables(scope, **kwargs):
         if t[1].functor == "cell"
     ]
     matrix = cells_to_matrix(cell_term_list)
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if matrix[i, j] is None:
+                matrix[i, j] = ""
     tables = tables_from_cells(matrix, Orientation.vertical)
-    raise RuntimeError(tables)
+
+    result = []
+    for table in tables:
+        result.append(
+            Term(
+                "table",
+                Constant(table.name),
+                Constant(table.range.row + 1),
+                Constant(table.range.column + 1),
+                Constant(table.range.height),
+                Constant(table.range.width),
+            )
+        )
+        for i in range(table.range.height):
+            for j in range(table.range.width):
+                result.append(
+                    Term(
+                        "table_cell",
+                        Constant(table.name),
+                        Constant(i + 1),
+                        Constant(j + 1),
+                        Constant(table.data[i, j]),
+                    )
+                )
+                result.append(
+                    Term(
+                        "table_cell_type",
+                        Constant(table.name),
+                        Constant(i + 1),
+                        Constant(j + 1),
+                        Constant(table.type_data[i, j]),
+                    )
+                )
+    return result
 
 
 def cells_to_matrix(cell_term_list):
