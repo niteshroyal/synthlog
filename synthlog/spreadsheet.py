@@ -1,5 +1,7 @@
 from __future__ import print_function
 import os
+import csv
+
 import openpyxl as xls
 
 from problog.extern import (
@@ -13,6 +15,20 @@ from problog.errors import UserError, InvalidValue
 
 @problog_export_nondet("+str", "-term")
 def load_spreadsheet(filename):
+    """
+    Load a excel spreadsheet into Synthlog.
+    Output is a list of cell terms, containing the values of the first excel spreadsheet.
+    For example, if on the second row and third column, there is a cell having value 6, the term cell(1, 2, 3, 6). will be created.
+    Usage:
+    .. code-block:: prolog
+        magic:X :- load_spreadsheet("magic.xlsx", X).
+
+    where X grounds to all non-empty cells in the spreadsheet.
+    :param filename: Filename of the xlsx file to load. If relative, the base directory is ...
+    :type filename: string
+    :return A list of cell terms. A cell term is cell(<sheet_id>, <row_id>, <column_id>, <value>)
+    :rtype list of Term
+    """
     # Resolve the filename with respect to the main Prolog file location.
     workbook = problog_export.database.resolve_filename(filename)
     if not os.path.isfile(workbook):
@@ -35,3 +51,28 @@ def load_spreadsheet(filename):
                     )
                 )
     return res
+
+
+@problog_export_nondet("+str", "-term")
+def load_csv(filename):
+    # Resolve the filename with respect to the main Prolog file location.
+    csv_file = problog_export.database.resolve_filename(filename)
+    if not os.path.isfile(csv_file):
+        raise UserError("Can't find CSV file '%s'" % csv_file)
+
+    with open(csv_file) as csv_ref:
+        csv_reader = csv.reader(csv_ref, delimiter=",")
+        result = []
+        for i, row in enumerate(csv_reader):
+            for j, cell in enumerate(row):
+                if cell:
+                    result.append(
+                        Term(
+                            "cell",
+                            Constant(1),
+                            Constant(i),
+                            Constant(j),
+                            Constant(cell),
+                        )
+                    )
+    return result
