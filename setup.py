@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name="synhlog",
+    name="synthlog",
     version="0.0",
     description="",
     url="",
