@@ -6,9 +6,9 @@ setup(
     description="",
     url="",
     author="",
-    author_email="m",
+    author_email="",
     license="",
     packages=["synthlog"],
+    install_requires=["problog", "openpyxl"]
     zip_safe=False,
 )
-
