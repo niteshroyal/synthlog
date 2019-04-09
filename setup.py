@@ -9,6 +9,7 @@ setup(
     author_email="",
     license="",
     packages=["synthlog"],
-    install_requires=["problog", "openpyxl"]
+    install_requires=["problog", "openpyxl"],
+    entry_points={"console_scripts": ["synthlog=synthlog.__main__:main"]},
     zip_safe=False,
 )
