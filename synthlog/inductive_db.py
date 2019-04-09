@@ -90,7 +90,7 @@ def excel_into_sqlite(workbook, database, workbook_name=None):
             # Load the data from the Excel sheet and add non-empty cells to the database.
             for row in wb[sheetname].iter_rows():
                 for cell in row:
-                    if cell.value:
+                    if cell.value is not None:
                         insert_cell(
                             cursor,
                             workbook_id,
