@@ -1,11 +1,24 @@
 from __future__ import print_function
 
-from problog.extern import problog_export, problog_export_class, problog_export_raw, problog_export_nondet
+from problog.extern import (
+    problog_export,
+    problog_export_class,
+    problog_export_raw,
+    problog_export_nondet,
+)
 
 import sys
 
 
-from problog.logic import Term, Object, term2list, Constant, is_list, term2str, Var
+from problog.logic import (
+    Term,
+    Object,
+    term2list,
+    Constant,
+    is_list,
+    term2str,
+    Var,
+)
 from problog.engine_unify import unify_value, UnifyError
 
 sys.path.append(".")
@@ -20,17 +33,19 @@ import predictors
 #######################
 
 
-@problog_export('+term', '-term')
+@problog_export("+term", "-term")
 def get_mercs_classifier(params):
     return Object(predictors.MERCSClassifierWrapper(params))
 
 
-@problog_export('+term', '+term', '-term')
+@problog_export("+term", "+term", "-term")
 def get_sklearn_classifier(classifier_name, params):
-    return Object(predictors.ScikitLearnClassifierWrapper(classifier_name, params))
+    return Object(
+        predictors.ScikitLearnClassifierWrapper(classifier_name, params)
+    )
 
 
-@problog_export('+term', '+term', '+term', '-term')
+@problog_export("+term", "+term", "+term", "-term")
 def fit(matrix, classifier, train_column):
     """
     Fit a classifier on the given matrix to predict train_column
@@ -45,7 +60,7 @@ def fit(matrix, classifier, train_column):
     return Object(clf)
 
 
-@problog_export('+term', '+term', '+term', '-list')
+@problog_export("+term", "+term", "+term", "-list")
 def predict(matrix, classifier, predict_column):
     """
     Predicts

@@ -48,10 +48,14 @@ class ClassifierWrapper:
 
     def fit(self, matrix, train_column):
         # Encoders are computed at train time. Unseen label at test time will lead to an error
-        class_index = train_column.value-1
-        self.encoders = np.apply_along_axis(ClassifierWrapper.fit_encode, axis=0, arr=matrix)
+        class_index = train_column.value - 1
+        self.encoders = np.apply_along_axis(
+            ClassifierWrapper.fit_encode, axis=0, arr=matrix
+        )
         nmatrix = self.encode(matrix)
-        train_indices = [i for i in range(nmatrix.shape[1]) if i != class_index]
+        train_indices = [
+            i for i in range(nmatrix.shape[1]) if i != class_index
+        ]
         self.clf.fit(X=nmatrix[:, train_indices], y=nmatrix[:, class_index])
 
     def predict(self, matrix, predict_column):
@@ -60,34 +64,38 @@ class ClassifierWrapper:
 
         pred = []
         if type(pred_column) is int:
-            train_indices = [i for i in range(nmatrix.shape[1]) if i != pred_column]
+            train_indices = [
+                i for i in range(nmatrix.shape[1]) if i != pred_column
+            ]
             pred = self.clf.predict(nmatrix[:, train_indices])
         elif type(pred_column) is list:
             raise ValueError("List type not supported for prediction indices")
 
         if self.encoders[pred_column]:
-            pred = self.encoders[pred_column].inverse_transform(pred.astype(int))
+            pred = self.encoders[pred_column].inverse_transform(
+                pred.astype(int)
+            )
         return pred
 
     def get_predict_column(self, predict_column):
         pred_column = None
         if type(predict_column) is Term:
-            pred_column = [i-1 for i in term2list(predict_column)]
+            pred_column = [i - 1 for i in term2list(predict_column)]
         elif type(predict_column) is Constant:
             pred_column = predict_column.value - 1
         return pred_column
 
     #######################
-#                     #
-#        Class        #
-#       Methods       #
-#                     #
-#######################
+    #                     #
+    #        Class        #
+    #       Methods       #
+    #                     #
+    #######################
 
     @staticmethod
     def fit_encode(array):
         try:
-            array.astype(float, casting='safe')
+            array.astype(float, casting="safe")
         except:
             try:
                 label = LabelEncoder()
@@ -113,8 +121,8 @@ class ScikitLearnClassifierWrapper(ClassifierWrapper):
         :param params: Parameters of the classifier (same as the one in sklearn). List of strings in the form key=value.
         """
         super().__init__()
-        self.model_name = 'sklearn.%s' % self.drop_quotes(model_name)
-        module_name, classname = self.model_name.rsplit('.', 1)
+        self.model_name = "sklearn.%s" % self.drop_quotes(model_name)
+        module_name, classname = self.model_name.rsplit(".", 1)
         model_class = getattr(importlib.import_module(module_name), classname)
 
         self.parse_parameters(params)
@@ -136,7 +144,9 @@ class MERCSClassifierWrapper(ClassifierWrapper):
         self.parse_parameters(params)
 
     def fit(self, matrix, train_column):
-        self.encoders = np.apply_along_axis(ClassifierWrapper.fit_encode, axis=0, arr=matrix)
+        self.encoders = np.apply_along_axis(
+            ClassifierWrapper.fit_encode, axis=0, arr=matrix
+        )
         nmatrix = self.encode(matrix)
         self.clf.fit(pd.DataFrame(nmatrix), **self.parameters)
 
@@ -154,14 +164,18 @@ class MERCSClassifierWrapper(ClassifierWrapper):
 
         nmatrix = self.encode(matrix)
 
-        pred = self.clf.predict(pd.DataFrame(nmatrix),
-                       **self.parameters,
-                       qry_code=code)
+        pred = self.clf.predict(
+            pd.DataFrame(nmatrix), **self.parameters, qry_code=code
+        )
 
         processed_pred = []
         for index, col_index in enumerate(pred_column):
             if self.encoders[col_index]:
-                processed_pred.append(self.encoders[col_index].inverse_transform(pred[:,index].astype(int)))
+                processed_pred.append(
+                    self.encoders[col_index].inverse_transform(
+                        pred[:, index].astype(int)
+                    )
+                )
         if single_column:
             processed_pred = processed_pred[0]
         return np.array(processed_pred)

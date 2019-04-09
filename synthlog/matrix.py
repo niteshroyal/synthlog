@@ -7,7 +7,7 @@ from problog.errors import UserError
 
 import logging
 
-logger = logging.getLogger('problog')
+logger = logging.getLogger("problog")
 
 
 #######################
@@ -17,8 +17,9 @@ logger = logging.getLogger('problog')
 #                     #
 #######################
 
-@problog_export('-term')
-@problog_export('+term', '-term')
+
+@problog_export("-term")
+@problog_export("+term", "-term")
 def init_matrix(sheet_format=None):
     sformat = StandardSpreadsheetFormat()
     # TODO pass the shifts as parameters
@@ -27,20 +28,22 @@ def init_matrix(sheet_format=None):
     return Object(SpreadsheetMatrix(sformat))
 
 
-@problog_export('+term', '+str', '+term', '+term', '+term', '+term')
+@problog_export("+term", "+str", "+term", "+term", "+term", "+term")
 def load_blocks(matrix, filename, wid, sid, row_slice, col_slice):
     if type(matrix) != int:
         m = matrix.functor
-        m.set_load_cells_parameters(unquote(filename), wid.functor, sid.functor, row_slice, col_slice)
+        m.set_load_cells_parameters(
+            unquote(filename), wid.functor, sid.functor, row_slice, col_slice
+        )
     return ()
 
 
-@problog_export_raw('+term', '+term', '+term', '+term')
+@problog_export_raw("+term", "+term", "+term", "+term")
 def generate_axis(matrix, axis, index, *args, **kwargs):
     return generate_term_array(matrix, axis, index, None, **kwargs)
 
 
-@problog_export_raw('+term', '+term', '+term')
+@problog_export_raw("+term", "+term", "+term")
 def generate_cell(matrix, indices, *args, **kwargs):
     force_load(matrix, **kwargs)
     m = matrix.functor
@@ -51,49 +54,49 @@ def generate_cell(matrix, indices, *args, **kwargs):
     return []
 
 
-@problog_export_raw('+term', '+term', '+term')
+@problog_export_raw("+term", "+term", "+term")
 def generate_column(matrix, index, *args, **kwargs):
     return generate_term_array(matrix, 1, index, "column", **kwargs)
 
 
-@problog_export_raw('+term', '+term')
+@problog_export_raw("+term", "+term")
 def generate_columns(matrix, *args, **kwargs):
     return generate_terms_array(matrix, 1, "column", **kwargs)
 
 
-@problog_export_raw('+term', '+term', '+term', '+term')
+@problog_export_raw("+term", "+term", "+term", "+term")
 def generate_full_axis(matrix, axis, *args, **kwargs):
     return generate_terms_array(matrix, axis, None, **kwargs)
 
 
-@problog_export_raw('+term', '+term', '+term')
+@problog_export_raw("+term", "+term", "+term")
 def generate_row(matrix, index, *args, **kwargs):
     return generate_term_array(matrix, 0, index, "row", **kwargs)
 
 
-@problog_export_raw('+term', '+term')
+@problog_export_raw("+term", "+term")
 def generate_rows(matrix, *args, **kwargs):
     return generate_terms_array(matrix, 0, "row", **kwargs)
 
 
-@problog_export('+term', '+term', '+term', '+str')
+@problog_export("+term", "+term", "+term", "+str")
 def insert_str_cell(matrix, indices, value):
     list_indices = term2list(indices)
     return insert_value(matrix, list_indices, unquote(value))
 
 
-@problog_export('+term', '+term', '+term', '+term')
+@problog_export("+term", "+term", "+term", "+term")
 def insert_cell(matrix, indices, value):
     list_indices = term2list(indices)
     return insert_value(matrix, list_indices, value.value)
 
 
-@problog_export('+term', '+term', '+term')
+@problog_export("+term", "+term", "+term")
 def insert_column(matrix, index, column):
     return insert_array(matrix, index, column, axis=1)
 
 
-@problog_export('+term', '+term', '+term')
+@problog_export("+term", "+term", "+term")
 def insert_row(matrix, index, row):
     return insert_array(matrix, index, row, axis=0)
 
@@ -106,8 +109,8 @@ def insert_row(matrix, index, row):
 
 
 def force_load(matrix, **kwargs):
-    engine = kwargs['engine']
-    database = kwargs['database']
+    engine = kwargs["engine"]
+    database = kwargs["database"]
     # TODO: test if it is still needed
     engine.query(database, Term("init_matrix", matrix), subcall=True)
 
@@ -133,7 +136,9 @@ def generate_terms_array(matrix, axis, term_name, **kwargs):
 
 def insert_array(matrix, index, array, axis):
     m = matrix.functor
-    m.insert_parameters.append((SpreadsheetMatrix.insert, index.value, term2list(array), axis))
+    m.insert_parameters.append(
+        (SpreadsheetMatrix.insert, index.value, term2list(array), axis)
+    )
     return ()
 
 
@@ -161,10 +166,13 @@ class SpreadsheetFormat:
 
 class StandardSpreadsheetFormat(SpreadsheetFormat):
     def format_cells(self, matrix, cells):
-        m = np.empty([matrix.get_row_number(),
-                      matrix.get_column_number()], dtype=Term)
-        m[cells[:, 0].astype(int) - matrix.rows[0],
-          cells[:, 1].astype(int) - matrix.columns[0]] = cells[:, 2]
+        m = np.empty(
+            [matrix.get_row_number(), matrix.get_column_number()], dtype=Term
+        )
+        m[
+            cells[:, 0].astype(int) - matrix.rows[0],
+            cells[:, 1].astype(int) - matrix.columns[0],
+        ] = cells[:, 2]
         matrix.set_matrix(m)
 
     def output_matrix(self, matrix):
@@ -176,12 +184,23 @@ class NurseSpreadsheetFormat(SpreadsheetFormat):
         self.shifts = shifts
 
     def format_cells(self, matrix, cells):
-        m = np.empty([matrix.get_row_number(matrix),
-                      matrix.get_column_number(matrix) / self.shifts,
-                      self.shifts], dtype=Term)
-        m[cells[:, 0].astype(int) - matrix.rows[0],
-          ((cells[:, 1].astype(int) - matrix.columns[0]) / self.shifts).astype(int),
-          ((cells[:, 1].astype(int) - matrix.columns[0]) % self.shifts).astype(int)] = cells[:, 2]
+        m = np.empty(
+            [
+                matrix.get_row_number(matrix),
+                matrix.get_column_number(matrix) / self.shifts,
+                self.shifts,
+            ],
+            dtype=Term,
+        )
+        m[
+            cells[:, 0].astype(int) - matrix.rows[0],
+            (
+                (cells[:, 1].astype(int) - matrix.columns[0]) / self.shifts
+            ).astype(int),
+            (
+                (cells[:, 1].astype(int) - matrix.columns[0]) % self.shifts
+            ).astype(int),
+        ] = cells[:, 2]
         matrix.set_matrix(m)
 
     def output_matrix(self, matrix):
@@ -225,11 +244,11 @@ class SpreadsheetMatrix:
     def columns(self):
         return self.__columns
 
-#######################
-#                     #
-#       Methods       #
-#                     #
-#######################
+    #######################
+    #                     #
+    #       Methods       #
+    #                     #
+    #######################
 
     def fill_axis(self, index, axis=0):
         shape = list(self.__matrix.shape)
@@ -249,10 +268,10 @@ class SpreadsheetMatrix:
             array = np.array(array)
             for i in range(len(shape)):
                 if i != axis:
-                    array_i = i if i < axis else i+1
+                    array_i = i if i < axis else i + 1
                     shape[i] = max(shape[i], array.shape[array_i])
                 else:
-                    shape[i] = max(shape[i], index+1)
+                    shape[i] = max(shape[i], index + 1)
             self.fill_until(shape)
 
             self.update(index, array, axis=axis)
@@ -281,10 +300,18 @@ class SpreadsheetMatrix:
                  Owner =?
                 """
 
-                cursor.execute(sql, [self.__wid, self.__sid,
-                                     self.__rows[0], self.__rows[1],
-                                     self.__columns[0], self.__columns[1],
-                                     'excel'])
+                cursor.execute(
+                    sql,
+                    [
+                        self.__wid,
+                        self.__sid,
+                        self.__rows[0],
+                        self.__rows[1],
+                        self.__columns[0],
+                        self.__columns[1],
+                        "excel",
+                    ],
+                )
                 cells = np.matrix(cursor.fetchall())
 
                 self.__format.format_cells(self, cells)
@@ -295,8 +322,14 @@ class SpreadsheetMatrix:
         return self.__format.output_matrix(self)
 
     def update(self, index, array, axis=0):
-        matrix_range = [range(0, array.shape[i]) for i in range(0, min(axis, len(array.shape)))] + [index] \
-                       + [range(0, array.shape[i]) for i in range(axis, len(array.shape))]
+        matrix_range = (
+            [
+                range(0, array.shape[i])
+                for i in range(0, min(axis, len(array.shape)))
+            ]
+            + [index]
+            + [range(0, array.shape[i]) for i in range(axis, len(array.shape))]
+        )
         self.__matrix[matrix_range] = array
 
     def update_cell(self, indices, value):
@@ -310,27 +343,39 @@ class SpreadsheetMatrix:
             insert[0](self, *insert[1:])
         self.__insert_parameters = []
 
-#######################
-#                     #
-#       Getter        #
-#      & Setter       #
-#                     #
-#######################
+    #######################
+    #                     #
+    #       Getter        #
+    #      & Setter       #
+    #                     #
+    #######################
 
     def get_cell(self, *args):
         self.update_matrix()
         if self.__loaded:
             shape = self.__matrix.shape
-            if len(args) == len(shape) and all(args[i] < shape[i] for i in range(len(args))):
-                return Term("cell", *[Constant(a) for a in args],  Constant(self.__matrix[args]))
+            if len(args) == len(shape) and all(
+                args[i] < shape[i] for i in range(len(args))
+            ):
+                return Term(
+                    "cell",
+                    *[Constant(a) for a in args],
+                    Constant(self.__matrix[args])
+                )
 
     def get_axis(self, axis, index, term_name=None):
         self.update_matrix()
         if not term_name:
             term_name = "axis_" + str(axis)
-        if self.__loaded and self.__matrix.any() and \
-                axis < len(self.__matrix.shape) and index < self.__matrix.shape[axis]:
-                return self.get_array_term(term_name, index, self.__matrix.take(index, axis=axis))
+        if (
+            self.__loaded
+            and self.__matrix.any()
+            and axis < len(self.__matrix.shape)
+            and index < self.__matrix.shape[axis]
+        ):
+            return self.get_array_term(
+                term_name, index, self.__matrix.take(index, axis=axis)
+            )
 
     def get_column_number(self):
         return self.__columns[1] - self.__columns[0] + 1
@@ -338,12 +383,15 @@ class SpreadsheetMatrix:
     def get_full_axis(self, axis, term_name=None):
         self.update_matrix()
         if self.__loaded:
-            return [self.get_axis(axis, index, term_name=term_name)
-                    for index in range(self.__matrix.shape[axis])]
+            return [
+                self.get_axis(axis, index, term_name=term_name)
+                for index in range(self.__matrix.shape[axis])
+            ]
 
     """
     Return the matrix without update
     """
+
     def get_matrix(self):
         return self.__matrix
 
@@ -357,17 +405,25 @@ class SpreadsheetMatrix:
     def set_matrix(self, matrix):
         self.__matrix = matrix
 
-#######################
-#                     #
-#        Class        #
-#       Methods       #
-#                     #
-#######################
+    #######################
+    #                     #
+    #        Class        #
+    #       Methods       #
+    #                     #
+    #######################
 
     @staticmethod
     def get_array_term(name, index, array):
-        return Term(name, Constant(index),
-                    *[Constant(array[j]) if array[j] is not None else Var("X" + str(j)) for j in range(len(array))])
+        return Term(
+            name,
+            Constant(index),
+            *[
+                Constant(array[j])
+                if array[j] is not None
+                else Var("X" + str(j))
+                for j in range(len(array))
+            ]
+        )
 
     @staticmethod
     def get_slice(term):
