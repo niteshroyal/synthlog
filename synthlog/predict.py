@@ -39,9 +39,16 @@ def get_mercs_classifier(params):
 
 
 @problog_export("+term", "+term", "-term")
-def get_sklearn_classifier(classifier_name, params):
+def sklearn_classifier(classifier_name, params):
     return Object(
         predictors.ScikitLearnClassifierWrapper(classifier_name, params)
+    )
+
+
+@problog_export("+term", "-term")
+def decision_tree(params):
+    return Object(
+        predictors.ScikitLearnClassifierWrapper("DecisionTreeClassifier", params)
     )
 
 
