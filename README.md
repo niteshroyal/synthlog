@@ -3,7 +3,8 @@
 ## running synthlog
 
 1. Install `pipenv` and run `pipenv install`.
-2. Run `synthlog examples/synthlog/load_spreadsheet.pl`.
+2. Activate this shell `pipenv shell`
+3. Run `synthlog examples/synthlog/load_spreadsheet.pl`.
 
 ## style guide
 
