@@ -1,16 +1,20 @@
 from __future__ import print_function
-import os
-import csv
 
-import openpyxl as xls
-
+from problog import get_evaluatable
 from problog.extern import (
     problog_export,
     problog_export_nondet,
     problog_export_raw,
 )
+
 from problog.logic import Term, term2list, Constant, unquote
 from problog.errors import UserError, InvalidValue
+
+import os
+import openpyxl as xls
+import csv
+
+from problog.program import PrologString
 
 
 @problog_export_nondet("+str", "-term")
@@ -76,3 +80,8 @@ def load_csv(filename):
                         )
                     )
     return result
+
+
+@problog_export_nondet("+list", "-term")
+def detect_tables(cell_terms):
+    raise RuntimeError(repr(cell_terms))
