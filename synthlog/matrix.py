@@ -19,7 +19,7 @@ logger = logging.getLogger("problog")
 
 
 @problog_export("-term")
-@problog_export("+term", "-term")
+@problog_export("+str", "-term")
 def init_matrix(sheet_format=None):
     sformat = StandardSpreadsheetFormat()
     # TODO pass the shifts as parameters
