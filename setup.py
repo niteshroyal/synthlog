@@ -9,6 +9,6 @@ setup(
     author_email="",
     license="",
     packages=["synthlog"],
-    install_requires=["problog", "openpyxl"]
+    install_requires=["problog", "openpyxl"],
     zip_safe=False,
 )
