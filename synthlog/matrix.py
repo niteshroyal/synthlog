@@ -166,9 +166,7 @@ class SpreadsheetFormat:
 
 class StandardSpreadsheetFormat(SpreadsheetFormat):
     def format_cells(self, matrix, cells):
-        m = np.empty(
-            [matrix.get_row_number(), matrix.get_column_number()], dtype=Term
-        )
+        m = np.empty([matrix.get_row_number(), matrix.get_column_number()], dtype=Term)
         m[
             cells[:, 0].astype(int) - matrix.rows[0],
             cells[:, 1].astype(int) - matrix.columns[0],
@@ -194,12 +192,8 @@ class NurseSpreadsheetFormat(SpreadsheetFormat):
         )
         m[
             cells[:, 0].astype(int) - matrix.rows[0],
-            (
-                (cells[:, 1].astype(int) - matrix.columns[0]) / self.shifts
-            ).astype(int),
-            (
-                (cells[:, 1].astype(int) - matrix.columns[0]) % self.shifts
-            ).astype(int),
+            ((cells[:, 1].astype(int) - matrix.columns[0]) / self.shifts).astype(int),
+            ((cells[:, 1].astype(int) - matrix.columns[0]) % self.shifts).astype(int),
         ] = cells[:, 2]
         matrix.set_matrix(m)
 
@@ -323,10 +317,7 @@ class SpreadsheetMatrix:
 
     def update(self, index, array, axis=0):
         matrix_range = (
-            [
-                range(0, array.shape[i])
-                for i in range(0, min(axis, len(array.shape)))
-            ]
+            [range(0, array.shape[i]) for i in range(0, min(axis, len(array.shape)))]
             + [index]
             + [range(0, array.shape[i]) for i in range(axis, len(array.shape))]
         )
@@ -358,9 +349,7 @@ class SpreadsheetMatrix:
                 args[i] < shape[i] for i in range(len(args))
             ):
                 return Term(
-                    "cell",
-                    *[Constant(a) for a in args],
-                    Constant(self.__matrix[args])
+                    "cell", *[Constant(a) for a in args], Constant(self.__matrix[args])
                 )
 
     def get_axis(self, axis, index, term_name=None):
@@ -418,9 +407,7 @@ class SpreadsheetMatrix:
             name,
             Constant(index),
             *[
-                Constant(array[j])
-                if array[j] is not None
-                else Var("X" + str(j))
+                Constant(array[j]) if array[j] is not None else Var("X" + str(j))
                 for j in range(len(array))
             ]
         )
