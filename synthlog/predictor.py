@@ -46,17 +46,17 @@ class ClassifierWrapper:
                 nmatrix[:, i] = self.encoders[i].transform(nmatrix[:, i])
         return nmatrix.astype(float)
 
-    def fit(self, matrix, train_column):
+    def fit(self, matrix, targ_ids):
         # Encoders are computed at train time. Unseen label at test time will lead to an error
-        class_index = train_column.value - 1
+
+        nmatrix = self.encode(matrix)
+        attr_ids = set(range(nmatrix.shape[1]))
+        desc_ids = list(attr_ids - set(targ_ids))
+
         self.encoders = np.apply_along_axis(
             ClassifierWrapper.fit_encode, axis=0, arr=matrix
         )
-        nmatrix = self.encode(matrix)
-        train_indices = [
-            i for i in range(nmatrix.shape[1]) if i != class_index
-        ]
-        self.clf.fit(X=nmatrix[:, train_indices], y=nmatrix[:, class_index])
+        self.clf.fit(X=nmatrix[:, desc_ids], y=nmatrix[:, targ_ids])
 
     def predict(self, matrix, predict_column):
         pred_column = self.get_predict_column(predict_column)
