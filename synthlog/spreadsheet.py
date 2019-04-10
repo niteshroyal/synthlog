@@ -90,7 +90,7 @@ def detect_tables(scope, **kwargs):
             if matrix[i, j] is None:
                 matrix[i, j] = ""
     tables = tables_from_cells(matrix, Orientation.vertical)
-
+    print(tables)
     result = []
     for table in tables:
         result.append(
@@ -103,8 +103,18 @@ def detect_tables(scope, **kwargs):
                 Constant(table.range.width),
             )
         )
-        for i in range(table.range.height):
-            for j in range(table.range.width):
+
+        for j in range(table.range.width):
+            result.append(
+                Term(
+                    "table_header",
+                    Constant(table.name),
+                    Constant(table.range.row),
+                    Constant(j + 1),
+                    Constant(matrix[table.range.row - 1, j]),
+                )
+            )
+            for i in range(table.range.height):
                 result.append(
                     Term(
                         "table_cell",

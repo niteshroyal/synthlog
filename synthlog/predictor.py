@@ -64,17 +64,13 @@ class ClassifierWrapper:
 
         pred = []
         if type(pred_column) is int:
-            train_indices = [
-                i for i in range(nmatrix.shape[1]) if i != pred_column
-            ]
+            train_indices = [i for i in range(nmatrix.shape[1]) if i != pred_column]
             pred = self.clf.predict(nmatrix[:, train_indices])
         elif type(pred_column) is list:
             raise ValueError("List type not supported for prediction indices")
 
         if self.encoders[pred_column]:
-            pred = self.encoders[pred_column].inverse_transform(
-                pred.astype(int)
-            )
+            pred = self.encoders[pred_column].inverse_transform(pred.astype(int))
         return pred
 
     def get_predict_column(self, predict_column):
@@ -164,9 +160,7 @@ class MERCSClassifierWrapper(ClassifierWrapper):
 
         nmatrix = self.encode(matrix)
 
-        pred = self.clf.predict(
-            pd.DataFrame(nmatrix), **self.parameters, qry_code=code
-        )
+        pred = self.clf.predict(pd.DataFrame(nmatrix), **self.parameters, qry_code=code)
 
         processed_pred = []
         for index, col_index in enumerate(pred_column):

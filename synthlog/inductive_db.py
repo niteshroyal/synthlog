@@ -1,10 +1,6 @@
 from __future__ import print_function
 
-from problog.extern import (
-    problog_export,
-    problog_export_nondet,
-    problog_export_raw,
-)
+from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
 from problog.logic import Term, term2list, Constant, unquote
 from problog.errors import UserError, InvalidValue
@@ -79,9 +75,7 @@ def excel_into_sqlite(workbook, database, workbook_name=None):
             UNIQUE(WorkbookID, SheetID, Row, Column) ON CONFLICT REPLACE);"""
         )
         cursor.execute("CREATE TABLE IF NOT EXISTS workbook(Name TEXT);")
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS sheet(WorkbookID INT, Name TEXT);"
-        )
+        cursor.execute("CREATE TABLE IF NOT EXISTS sheet(WorkbookID INT, Name TEXT);")
         workbook_id = get_workbook(cursor, workbook_name)
 
         # TODO make a unique insert
@@ -182,13 +176,7 @@ def save_matrix(filename, matrix, workbook_id, sheet_id, first_row, first_col):
             for col in range(len(m[row])):
                 value = m[row][col]
                 insert_cell(
-                    cursor,
-                    wid,
-                    sid,
-                    rid,
-                    col + first_col.value,
-                    value,
-                    "problog",
+                    cursor, wid, sid, rid, col + first_col.value, value, "problog"
                 )
     cursor.close()
 
@@ -231,9 +219,7 @@ def sqlite_load(filename, pattern=None):
         types = ["+term"] * len(columns)
         where = values[1] if pattern else None
         problog_export_raw(*types)(
-            QueryFunc(conn, table, columns, where=where),
-            funcname=table,
-            modname=None,
+            QueryFunc(conn, table, columns, where=where), funcname=table, modname=None
         )
 
     return ()
@@ -312,9 +298,7 @@ def get_pattern_values(pattern):
     rx = re.compile(r"^'([a-z]+)\((.+)\)'$")
     m = rx.match(pattern)
     if not m:
-        raise UserError(
-            "String does not follow the fact format for matching table"
-        )
+        raise UserError("String does not follow the fact format for matching table")
     table_name = m.group(1)
     values = m.group(2).split(",")
     return table_name, values
@@ -345,9 +329,7 @@ def get_sheet(cursor, workbook_id, name):
     if len(results) > 0:
         return results[0]
 
-    raise UserError(
-        "Can't insert new worksheet in the database '%s'" % database
-    )
+    raise UserError("Can't insert new worksheet in the database '%s'" % database)
 
 
 def get_workbook(cursor, name):
@@ -361,35 +343,21 @@ def get_workbook(cursor, name):
     results = [x[0] for x in cursor.fetchall()]
     if len(results) > 0:
         return results[0]
-    raise UserError(
-        "Can't insert new workbook in the database '%s'" % database
-    )
+    raise UserError("Can't insert new workbook in the database '%s'" % database)
 
 
 def insert(filename, table, *args):
     conn, cursor = connect(filename)
     with conn:
         cursor.execute(
-            "INSERT INTO "
-            + table
-            + " VALUES("
-            + ",".join(["?"] * len(args))
-            + ")",
+            "INSERT INTO " + table + " VALUES(" + ",".join(["?"] * len(args)) + ")",
             args,
         )
 
 
 def insert_cell(cursor, workbook_id, sheet_id, row, col, value, owner):
     sql = "INSERT INTO cell(WorkbookID, SheetID, Row, Column, Value, Owner) "
-    sql += (
-        "VALUES("
-        + str(workbook_id)
-        + ", "
-        + str(sheet_id)
-        + ", "
-        + str(row)
-        + ", "
-    )
+    sql += "VALUES(" + str(workbook_id) + ", " + str(sheet_id) + ", " + str(row) + ", "
     sql += str(col) + ", '" + str(value) + "', '" + str(owner) + "')"
     cursor.execute(sql)
 
@@ -441,11 +409,7 @@ class QueryFunc(object):
         if where:
             where = " WHERE " + where
 
-        query = "SELECT %s FROM %s%s" % (
-            ", ".join(self.columns),
-            self.tablename,
-            where,
-        )
+        query = "SELECT %s FROM %s%s" % (", ".join(self.columns), self.tablename, where)
         cur = self.db.cursor()
 
         cur.execute(query, values)
