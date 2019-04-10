@@ -20,4 +20,9 @@ magic_models:X :-decision_tree(magic_tables,
 
 magic_predict:X :- magic_models:predictor(Y), predict(magic_tables, Y, [column('T1', 2), column('T1', 3)], X).
 
-query(magic_predict:_).
+res_src(X):-magic_predict:prediction(Z), magic_predict:source(Z, X).
+% All prediction objects
+query(res_src(_)).
+
+%res(X):-magic_predict:prediction(X).
+%query(res(_)).

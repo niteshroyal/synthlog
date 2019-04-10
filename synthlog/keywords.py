@@ -135,14 +135,11 @@ def init_table_cell_type(table_name, row, column, cell_type):
     )
 
 
-def init_table_header(table_name, row, column, value):
+def init_table_header(table_name, column, value):
     """
     Initialize a table_header predicate
     :param table_name: The name of the table containing this header
     :type table_name: str
-
-    :param row: The header cell row ID
-    :type row: int
 
     :param column: The header cell column ID
     :type column: int
@@ -156,7 +153,6 @@ def init_table_header(table_name, row, column, value):
     return Term(
         "table_header",
         Constant("'{}'".format(table_name)),
-        Constant(row),
         Constant(column),
         Constant(value),
     )
