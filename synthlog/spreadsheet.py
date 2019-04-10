@@ -104,7 +104,7 @@ def detect_tables(scope, **kwargs):
             if matrix[i, j] is None:
                 matrix[i, j] = ""
     tables = tables_from_cells(matrix, Orientation.vertical)
-    print(tables)
+    # print(tables)
     result = []
     for table in tables:
         result.append(
