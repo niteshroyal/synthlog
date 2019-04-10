@@ -23,9 +23,6 @@ from mercs_repo.src.mercs.core import MERCS
 #######################
 
 
-
-
-
 class MERCSClassifierWrapper(ClassifierWrapper):
     def __init__(self, params):
         """

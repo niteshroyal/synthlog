@@ -16,7 +16,16 @@ import ast
 import numpy as np
 
 from problog.errors import UserError
-from problog.logic import Term, Object, term2list, Constant, is_list, term2str, Var, unquote
+from problog.logic import (
+    Term,
+    Object,
+    term2list,
+    Constant,
+    is_list,
+    term2str,
+    Var,
+    unquote,
+)
 from problog.engine_unify import unify_value, UnifyError
 
 
@@ -34,7 +43,9 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     # raise RuntimeWarning([t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]])
     # raise RuntimeError(table_cell_term_list, table_cell_term_list[0].value, type(table_cell_term_list[0].value))
 
-    relevant_table = [t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]]
+    relevant_table = [
+        t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]
+    ]
 
     matrix = cells_to_matrix(relevant_table)
 
@@ -48,7 +59,6 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
 
     print(clf, clf.get_params())
     quit()
-
 
     # raise RuntimeError(matrix)
 
