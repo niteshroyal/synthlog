@@ -117,9 +117,7 @@ def detect_tables(scope, **kwargs):
 
         for j in range(table.range.width):
             result.append(
-                init_table_header(
-                    table.name, table.range.row, j + 1, matrix[table.range.row - 1, j]
-                )
+                init_table_header(table.name, j + 1, matrix[table.range.row - 1, j])
             )
             for i in range(table.range.height):
                 result.append(
@@ -145,6 +143,24 @@ def translate_constraint(constraint: Constraint):
     if isinstance(constraint.template, AllDifferent):
         # ensure_false :- table_cell('T1', R1, 4, V), table_cell('T1', R2, 4, V), R1 \= R2.
         return Clause(Term("ensure_false"), Term("'{}'".format()))
+
+
+@problog_export_nondet("+term", "+term", "+term", "+term", "+term", "-term")
+def matrix_to_atoms(table_name, header, cell_row, cell_type, cell_value, **kwargs):
+    table_name = unquote(str(table_name)).lower()
+    header = unquote(str(header)).lower()
+    cell_row = unquote(str(cell_row)).lower()
+    cell_type = unquote(str(cell_type)).lower()
+    cell_value = unquote(str(cell_value)).lower()
+
+    row_id = table_name + "_r" + cell_row
+
+    result = []
+    result.append(Term(header, Constant(row_id), Constant(cell_value)))
+    if cell_type == "string":
+        result.append(Term(header + "_" + cell_value, Constant(row_id)))
+
+    return result
 
 
 #######################

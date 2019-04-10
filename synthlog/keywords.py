@@ -22,6 +22,34 @@ def init_cell(row, column, value, p=None):
     return Term("cell", Constant(row), Constant(column), Constant(value), p=p)
 
 
+def init_cell_pred(row, column, value, prediction_id, p=None):
+    """
+    Initialize a cell predicate
+    :param row: The cell row ID
+    :type row: int
+
+    :param column: The cell column ID
+    :type column: int
+
+    :param value: The cell value
+    :type value: str
+
+    :param p: The cell probability (optional)
+    :type p: float
+
+    :return: The cell Term
+    :rtype: Problog Term
+    """
+    return Term(
+        "cell_pred",
+        Constant(row),
+        Constant(column),
+        Constant(value),
+        Constant(prediction_id),
+        p=p,
+    )
+
+
 def init_table(name, first_row, first_column, row_number, column_number):
     """
     Initialize a table predicate
@@ -107,14 +135,11 @@ def init_table_cell_type(table_name, row, column, cell_type):
     )
 
 
-def init_table_header(table_name, row, column, value):
+def init_table_header(table_name, column, value):
     """
     Initialize a table_header predicate
     :param table_name: The name of the table containing this header
     :type table_name: str
-
-    :param row: The header cell row ID
-    :type row: int
 
     :param column: The header cell column ID
     :type column: int
@@ -128,7 +153,6 @@ def init_table_header(table_name, row, column, value):
     return Term(
         "table_header",
         Constant("'{}'".format(table_name)),
-        Constant(row),
         Constant(column),
         Constant(value),
     )
