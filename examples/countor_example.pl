@@ -1,14 +1,13 @@
-:- use_module('../synthlog/inductive_db.py').
-:- use_module('../synthlog/matrix.py').
-:- use_module('countor_wrapper.py').
+:- use_module('../synthlog/spreadsheet.py').
+:- use_module('../synthlog/countor_wrapper.py').
 
-:- sqlite_load('nurse.db').
-:- excel_into_sqlite('../data/nurse.xlsx', 'nurse.db').
+nurse_cells:X :- load_csv('../data/nurse_new_format.csv', X).
+nurse_tables:X :- detect_tables(nurse_cells, X).
 
-nurse(M) :- init_matrix(M), load_blocks(M, 'nurse.db', 1, 1, 1:14, 1:22).
-constraint(C) :- nurse(M), learn_count_or_constraints(M, C).
-a(1) :- constraint(C), save_count_or_constraint('nurse.db', 1, 1, C).
-constraint_load(C) :- load_count_or_constraints(1, 1, C).
+%query(nurse_tables:_).
 
-%query(constraint_load(_)).
-query(constraint(_)).
+% Train a classifier
+    
+nurse_constraints:X :-learn_count_or_constraints(nurse_tables, X).
+
+query(nurse_constraints:_).
