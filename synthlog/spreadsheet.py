@@ -16,6 +16,14 @@ from problog.program import PrologString
 from tacle import tables_from_cells
 from tacle.indexing import Orientation
 
+from .keywords import (
+    init_cell,
+    init_table,
+    init_table_cell,
+    init_table_cell_type,
+    init_table_header,
+)
+
 
 #######################
 #                     #
@@ -100,43 +108,28 @@ def detect_tables(scope, **kwargs):
     result = []
     for table in tables:
         result.append(
-            Term(
-                "table",
-                Constant(table.name),
-                Constant(table.range.row + 1),
-                Constant(table.range.column + 1),
-                Constant(table.range.height),
-                Constant(table.range.width),
+            init_table(
+                table.name,
+                table.range.row + 1,
+                table.range.column + 1,
+                table.range.height,
+                table.range.width,
             )
         )
 
         for j in range(table.range.width):
             result.append(
-                Term(
-                    "table_header",
-                    Constant(table.name),
-                    Constant(table.range.row),
-                    Constant(j + 1),
-                    Constant(matrix[table.range.row - 1, j]),
+                init_table_header(
+                    table.name, table.range.row, j + 1, matrix[table.range.row - 1, j]
                 )
             )
             for i in range(table.range.height):
                 result.append(
-                    Term(
-                        "table_cell",
-                        Constant(table.name),
-                        Constant(i + 1),
-                        Constant(j + 1),
-                        Constant(table.data[i, j]),
-                    )
+                    init_table_cell(table.name, i + 1, j + 1, table.data[i, j])
                 )
                 result.append(
-                    Term(
-                        "table_cell_type",
-                        Constant(table.name),
-                        Constant(i + 1),
-                        Constant(j + 1),
-                        Constant(table.type_data[i, j]),
+                    init_table_cell_type(
+                        table.name, i + 1, j + 1, table.type_data[i, j]
                     )
                 )
     return result
@@ -171,24 +164,3 @@ def cells_to_matrix(cell_term_list):
         ] = cell_term.args[2].value
 
     return matrix
-
-
-def init_cell(row_id, col_id, value, p=None):
-    """
-    Initialize a cell predicate
-    :param row_id: The cell row ID
-    :type row_id: int
-
-    :param col_id: The cell column ID
-    :type col_id: int
-
-    :param value: The cell value
-    :type value: str
-
-    :param p: The cell probability (optional)
-    :type p: float
-
-    :return: The cell Term
-    :rtype: Problog Term
-    """
-    return Term("cell", Constant(row_id), Constant(col_id), Constant(value), p=p)
