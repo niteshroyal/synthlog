@@ -32,6 +32,17 @@ from problog.logic import (
 from problog.engine_unify import unify_value, UnifyError
 
 
+@problog_export("+term", "+term")
+def comparison(column1, column2):
+    print("Term: " + str(column1))
+    print("Term: " + str(column2))
+    print("Functor: " + str(column1.functor))
+    print("Functor: " + str(column2.functor))
+    print(column1.args[0])
+    print(column2.args[0])
+    return ()
+
+
 @problog_export_nondet("+term", "+list", "+list", "-term")
 def decision_tree(scope, source_columns, target_columns, **kwargs):
     engine = kwargs["engine"]
@@ -55,12 +66,12 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
 
     clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
 
-    predictor_term = [Term("predictor", Object(clf))]
+    predictor_term = Term("predictor", Object(clf))
     decision_tree_term = [Term("decision_tree", Object(clf))]
-    target_terms = [Term("target", predictor_term, Object(s)) for s in target_columns]
-    source_terms = [Term("source", predictor_term, Object(s)) for s in source_columns]
+    target_terms = [Term("target", Object(clf), t) for t in target_columns]
+    source_terms = [Term("source", Object(clf), s) for s in source_columns]
 
-    return predictor_term + decision_tree_term + source_terms + target_terms
+    return [predictor_term] + decision_tree_term + source_terms + target_terms
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
@@ -100,9 +111,7 @@ def predict(scope, predictor, source_columns, **kwargs):
         cell_pred_terms.append(init_cell_pred(r, c, y_pred[r, c], prediction_term_3))
 
     predictor_term = [Term("predictor", prediction_term_3, Object(predictor))]
-    source_terms = [
-        Term("source", prediction_term_3, Object(s)) for s in source_columns
-    ]
+    source_terms = [Term("source", prediction_term_3, s) for s in source_columns]
 
     return (
         [prediction_term_1, prediction_term_3]
