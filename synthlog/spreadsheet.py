@@ -135,6 +135,11 @@ def detect_tables(scope, **kwargs):
     return result
 
 
+@problog_export_nondet("+term", "-term")
+def tacle(scope, **kwargs):
+    table_cells = get_terms_from_scope(scope, "table_cells", kwargs)
+
+
 #######################
 #                     #
 #      Functions      #
@@ -142,10 +147,28 @@ def detect_tables(scope, **kwargs):
 #######################
 
 
-def cells_to_matrix(cell_term_list):
+def cells_to_matrix(cell_terms):
+    return convert_to_matrix(
+        cell_terms,
+        lambda t: t.args[0].value,
+        lambda t: t.args[1].value,
+        lambda t: t.args[2].value,
+    )
+
+
+def table_cells_to_matrix(table_cell_terms):
+    return convert_to_matrix(
+        table_cell_terms,
+        lambda t: t.args[1].value,
+        lambda t: t.args[2].value,
+        lambda t: t.args[3].value,
+    )
+
+
+def convert_to_matrix(terms, extract_y_f, extract_x_f, extract_val_f):
     min_y, max_y, min_x, max_x = [None, None, None, None]
-    for cell_term in cell_term_list:
-        y, x = cell_term.args[0].value, cell_term.args[1].value
+    for term in terms:
+        y, x = extract_y_f(term), extract_x_f(term)
         if min_y is None or y < min_y:
             min_y = y
         if max_y is None or y > max_y:
@@ -158,9 +181,17 @@ def cells_to_matrix(cell_term_list):
     column = max_x
     matrix = np.empty(shape=(row, column), dtype=np.object)
 
-    for cell_term in cell_term_list:
-        matrix[
-            cell_term.args[0].value - 1, cell_term.args[1].value - 1
-        ] = cell_term.args[2].value
+    for term in terms:
+        matrix[extract_y_f(term) - 1, extract_x_f(term) - 1] = extract_val_f(term)
 
     return matrix
+
+
+def get_terms_from_scope(scope, term_name, kwargs):
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+    return [
+        t[1]
+        for t in engine.query(database, Term("':'", scope, None), subcall=True)
+        if t[1].functor == term_name
+    ]
