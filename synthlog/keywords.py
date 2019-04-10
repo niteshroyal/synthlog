@@ -73,7 +73,7 @@ def init_table(name, first_row, first_column, row_number, column_number):
     """
     return Term(
         "table",
-        Constant(name),
+        Constant("'{}'".format(name)),
         Constant(first_row),
         Constant(first_column),
         Constant(row_number),
@@ -128,7 +128,7 @@ def init_table_cell_type(table_name, row, column, cell_type):
     """
     return Term(
         "table_cell_type",
-        Constant(table_name),
+        Constant("'{}'".format(table_name)),
         Constant(row),
         Constant(column),
         Constant(cell_type),
@@ -155,7 +155,7 @@ def init_table_header(table_name, row, column, value):
     """
     return Term(
         "table_header",
-        Constant(table_name),
+        Constant("'{}'".format(table_name)),
         Constant(row),
         Constant(column),
         Constant(value),
