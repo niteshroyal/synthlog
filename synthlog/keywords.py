@@ -22,6 +22,34 @@ def init_cell(row, column, value, p=None):
     return Term("cell", Constant(row), Constant(column), Constant(value), p=p)
 
 
+def init_cell_pred(row, column, value, prediction_id, p=None):
+    """
+    Initialize a cell predicate
+    :param row: The cell row ID
+    :type row: int
+
+    :param column: The cell column ID
+    :type column: int
+
+    :param value: The cell value
+    :type value: str
+
+    :param p: The cell probability (optional)
+    :type p: float
+
+    :return: The cell Term
+    :rtype: Problog Term
+    """
+    return Term(
+        "cell_pred",
+        Constant(row),
+        Constant(column),
+        Constant(value),
+        Constant(prediction_id),
+        p=p,
+    )
+
+
 def init_table(name, first_row, first_column, row_number, column_number):
     """
     Initialize a table predicate
