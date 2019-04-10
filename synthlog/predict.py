@@ -55,15 +55,21 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
 
     clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
 
-    return [Term("predictor", Object(clf)), Term("decision_tree", Object(clf))]
+    predictor_term = [Term("predictor", Object(clf))]
+    decision_tree_term = [Term("decision_tree", Object(clf))]
+    target_terms = [Term("target", predictor_term, Object(s)) for s in target_columns]
+    source_terms = [Term("source", predictor_term, Object(s)) for s in source_columns]
+
+    return predictor_term + decision_tree_term + source_terms + target_terms
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
 def predict(scope, predictor, source_columns, **kwargs):
-
-    prediction = Term(
+    prediction_term_3 = Term(
         "prediction", Object(scope), Object(predictor), Object(source_columns)
     )
+
+    prediction_term_1 = Term("prediction", prediction_term_3)
 
     engine = kwargs["engine"]
     database = kwargs["database"]
@@ -89,17 +95,21 @@ def predict(scope, predictor, source_columns, **kwargs):
 
     n_rows, n_cols = y_pred.shape
 
-    result = []
+    cell_pred_terms = []
     for r, c in product(range(n_rows), range(n_cols)):
-        result.append(init_cell_pred(r, c, y_pred[r, c], prediction))
+        cell_pred_terms.append(init_cell_pred(r, c, y_pred[r, c], prediction_term_3))
 
-    source_term = Term("source", prediction, Object(source_columns))
+    predictor_term = [Term("predictor", prediction_term_3, Object(predictor))]
+    source_terms = [
+        Term("source", prediction_term_3, Object(s)) for s in source_columns
+    ]
 
-    predictor_term = Term("predictor", prediction, Object(predictor))
-
-    result += [source_term, predictor_term]
-
-    return result
+    return (
+        [prediction_term_1, prediction_term_3]
+        + cell_pred_terms
+        + predictor_term
+        + source_terms
+    )
 
 
 def cells_to_matrix(cell_term_list):
