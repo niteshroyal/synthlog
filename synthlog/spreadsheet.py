@@ -16,7 +16,7 @@ from problog.program import PrologString
 from tacle import tables_from_cells
 from tacle.indexing import Orientation
 
-from .keywords import (
+from synthlog.keywords import (
     init_cell,
     init_table,
     init_table_cell,

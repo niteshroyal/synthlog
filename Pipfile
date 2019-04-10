@@ -11,6 +11,7 @@ white = "*"
 openpyxl = "*"
 problog = {editable = true,git = "https://bitbucket.org/problog/problog.git"}
 synthlog = {editable = true,path = "."}
+sklearn = "*"
 
 [requires]
 python_version = "3.6"
