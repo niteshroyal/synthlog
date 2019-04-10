@@ -1,7 +1,11 @@
 from __future__ import print_function
 
 from problog import get_evaluatable
-from problog.extern import problog_export, problog_export_nondet, problog_export_raw
+from problog.extern import (
+    problog_export,
+    problog_export_nondet,
+    problog_export_raw,
+)
 
 from problog.logic import Term, term2list, Constant, unquote
 from problog.errors import UserError, InvalidValue
@@ -15,6 +19,14 @@ from problog.program import PrologString
 
 from tacle import tables_from_cells
 from tacle.indexing import Orientation
+
+
+#######################
+#                     #
+#       ProbLog       #
+#       Exports       #
+#                     #
+#######################
 
 
 @problog_export_nondet("+str", "-term")
@@ -44,15 +56,8 @@ def load_spreadsheet(filename):
     res = []
     for row in wb.active.iter_rows():
         for cell in row:
-            if cell.value:
-                res.append(
-                    Term(
-                        "cell",
-                        Constant(cell.row),
-                        Constant(cell.col_idx),
-                        Constant(cell.value),
-                    )
-                )
+            if cell.value is not None:
+                res.append(init_cell(cell.row, cell.col_idx, cell.value))
     return res
 
 
@@ -68,15 +73,20 @@ def load_csv(filename):
         result = []
         for i, row in enumerate(csv_reader):
             for j, cell in enumerate(row):
-                if cell:
-                    result.append(
-                        Term("cell", Constant(i + 1), Constant(j + 1), Constant(cell))
-                    )
+                if cell is not None:
+                    result.append(init_cell(i + 1, j + 1, cell))
     return result
 
 
 @problog_export_nondet("+term", "-term")
 def detect_tables(scope, **kwargs):
+    """
+    Query the cells of a scope and return table, table_cell and table_cell_type predicates
+    :param scope: The scope
+    :type scope: Problog Term
+    :param kwargs: The keyword arguments used by Problog to give the reference on the database and the engine
+    :return: list of Terms that is used in Problog unification (one unification by Term)
+    """
     engine = kwargs["engine"]
     database = kwargs["database"]
     cell_term_list = [
@@ -136,6 +146,13 @@ def detect_tables(scope, **kwargs):
     return result
 
 
+#######################
+#                     #
+#      Functions      #
+#                     #
+#######################
+
+
 def cells_to_matrix(cell_term_list):
     min_y, max_y, min_x, max_x = [None, None, None, None]
     for cell_term in cell_term_list:
@@ -158,3 +175,26 @@ def cells_to_matrix(cell_term_list):
         ] = cell_term.args[2].value
 
     return matrix
+
+
+def init_cell(row_id, col_id, value, p=None):
+    """
+    Initialize a cell predicate
+    :param row_id: The cell row ID
+    :type row_id: int
+
+    :param col_id: The cell column ID
+    :type col_id: int
+
+    :param value: The cell value
+    :type value: str
+
+    :param p: The cell probability (optional)
+    :type p: float
+
+    :return: The cell Term
+    :rtype: Problog Term
+    """
+    return Term(
+        "cell", Constant(row_id), Constant(col_id), Constant(value), p=p
+    )
