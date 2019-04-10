@@ -15,5 +15,5 @@ magic_tables_error:X :- detect_tables(magic_cells_error, X) ; magic_cells_error:
 magic_constraints_error:X :- tacle(magic_tables_error, X).
 query(magic_constraints_error:_).
 
-%magic_diff:X :- scope_minus(magic_constraints, magic_constraints_error, X).
-%query(magic_diff:_).
+magic_diff:X :- magic_constraints:X, \+magic_constraints_error:X.
+query(magic_diff:_).

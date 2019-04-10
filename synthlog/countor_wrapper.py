@@ -8,25 +8,26 @@ import numpy as np
 import synthlog.spreadsheet as spreadsheet
 
 
-@problog_export_nondet("+term",  "-term")
-def learn_count_or_constraints(scope,  **kwargs):
-    table_cell_term_list=spreadsheet.get_terms_from_scope(scope,"table_cell",kwargs)
+@problog_export_nondet("+term", "-term")
+def learn_count_or_constraints(scope, **kwargs):
+    table_cell_term_list = spreadsheet.get_terms_from_scope(scope, "table_cell", kwargs)
     matrix = spreadsheet.table_cells_to_matrix(table_cell_term_list)
-    dataTensor,variables=cleanData(matrix)
-    constraints = learnConstraints(dataTensor,dataTensor.shape)
+    dataTensor, variables = cleanData(matrix)
+    constraints = learnConstraints(dataTensor, dataTensor.shape)
     print(constraints)
     return constraints
 
+
 @problog_export("+term", "-term")
 def get_count_or_constraints(matrix, *args, **kwargs):
-#    print(matrix, type(matrix), dir(matrix))
-#    print(matrix.functor)
-    data=np.asarray(matrix.functor.matrix)
-    dataTensor,variables=cleanData(data)
-#    print(dataTensor,variables)
-#    quit()
-#    m = matrix.functor.matrix
-    constraints = learnConstraints(dataTensor,dataTensor.shape)
+    #    print(matrix, type(matrix), dir(matrix))
+    #    print(matrix.functor)
+    data = np.asarray(matrix.functor.matrix)
+    dataTensor, variables = cleanData(data)
+    #    print(dataTensor,variables)
+    #    quit()
+    #    m = matrix.functor.matrix
+    constraints = learnConstraints(dataTensor, dataTensor.shape)
     print(constraints)
     return Object(constraints)
 
