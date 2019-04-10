@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
-from problog.logic import Term, term2list, Constant, unquote
+from problog.logic import Term, term2list, Constant, Object, unquote
 from problog.errors import UserError, InvalidValue
 
 import sqlite3
@@ -31,198 +31,51 @@ logger = logging.getLogger("problog")
 #######################
 
 
-@problog_export("+str", "+str")
-@problog_export("+str", "+str", "+str")
-def excel_into_sqlite(workbook, database, workbook_name=None):
-    """
-    Problog predicate to import a workbook (xlsx file) into a database
-
-    :param workbook: workbook path
-    :type workbook: str
-
-    :param database: database path
-    :type database: str
-
-    :param workbook_name: optional, a specific workbook name
-        default: the filename without extension
-    :type workbook_name: str
-
-    :return: An empty tuple (No Problog unification)
-    """
-
-    # Resolve the filename with respect to the main Prolog file location.
-    workbook = problog_export.database.resolve_filename(workbook)
-    if not os.path.exists(workbook):
-        raise UserError("Can't find spreadsheet '%s'" % workbook)
-
-    # Load the Excel workbook.
-    wb = xls.load_workbook(workbook)
-    if not workbook_name:
-        workbook_name = workbook.split("/")[-1].split(".")[0]
-
-    filename = problog_export.database.resolve_filename(database)
-    if filename:
-        database = filename
-    else:
-        database = unquote(database)
-    conn = sqlite3.connect(database)
-    cursor = conn.cursor()
-
-    with conn:
-        cursor.execute(
-            """CREATE TABLE IF NOT EXISTS 
-            cell(WorkbookID INT, SheetID INT, Row INT, Column INT, Value TEXT, Owner TEXT, 
-            UNIQUE(WorkbookID, SheetID, Row, Column) ON CONFLICT REPLACE);"""
-        )
-        cursor.execute("CREATE TABLE IF NOT EXISTS workbook(Name TEXT);")
-        cursor.execute("CREATE TABLE IF NOT EXISTS sheet(WorkbookID INT, Name TEXT);")
-        workbook_id = get_workbook(cursor, workbook_name)
-
-        # TODO make a unique insert
-        for sheetname in wb.sheetnames:
-            sheet_id = get_sheet(cursor, workbook_id, sheetname)
-            # Load the data from the Excel sheet and add non-empty cells to the database.
-            for row in wb[sheetname].iter_rows():
-                for cell in row:
-                    if cell.value is not None:
-                        insert_cell(
-                            cursor,
-                            workbook_id,
-                            sheet_id,
-                            cell.row,
-                            cell.col_idx,
-                            cell.value,
-                            "excel",
-                        )
-
-    return ()
-
-
-@problog_export("+str", "+term", "+term", "+term", "+term", "+term")
-def save_column(filename, column, workbook_id, sheet_id, first_row, col):
-    """
-    Store a Term list in a database
-
-    :param filename: The database filename
-    :type filename: str
-
-    :param column: The Term list
-    :type column: Problog list
-
-    :param workbook_id: The ID of the workbook for which the Term list represents a column
-    :type workbook_id: Constant (containing an integer)
-
-    :param sheet_id: The ID of the spreadsheet for which the Term list represents of column
-    :type sheet_id:  Constant (containing an integer)
-
-    :param first_row: The ID of the row for the first element of the list is the cell value
-    :type first_row:  Constant (containing an integer)
-
-    :param col: The ID of the column represented by the list
-    :type col:  Constant (containing an integer)
-
-    :return: An empty tuple (No Problog unification)
-    """
-    conn, cursor = connect(filename)
-
-    m = term2list(column)
-    wid = workbook_id.value
-    sid = sheet_id.value
-
-    with conn:
-        for row in range(len(m)):
-            rid = row + first_row.value
-            value = pl2db(m[row])
-            insert_cell(cursor, wid, sid, rid, col.value, value, "problog")
-    cursor.close()
-
-    return ()
-
-
-@problog_export("+str", "+term", "+term", "+term", "+term", "+term")
-def save_matrix(filename, matrix, workbook_id, sheet_id, first_row, first_col):
-    """
-    Store a Term matrix in a database
-
-    :param filename: The database filename
-    :type filename: str
-
-    :param matrix: the Term matrix
-    :type matrix: Problog list
-
-    :param workbook_id: The ID of the workbook for which the Term list represents a column
-    :type workbook_id: Constant (containing an integer)
-
-    :param sheet_id: The ID of the spreadsheet for which the Term list represents of column
-    :type sheet_id:  Constant (containing an integer)
-
-    :param first_row: The ID of the row for the first element of the list is the cell value
-    :type first_row:  Constant (containing an integer)
-
-    :param first_col: The ID of the column for the first element of the list is the cell value
-    :type first_col: Constaint (containing an integer)
-
-    :return: An empty tuple (No Problog unification)
-    """
-    conn, cursor = connect(filename)
-
-    m = matrix.functor.matrix
-    wid = workbook_id.value
-    sid = sheet_id.value
-
-    with conn:
-        for row in range(len(m)):
-            rid = row + first_row.value
-            for col in range(len(m[row])):
-                value = m[row][col]
-                insert_cell(
-                    cursor, wid, sid, rid, col + first_col.value, value, "problog"
-                )
-    cursor.close()
-
-    return ()
-
-
-@problog_export("+str")
-@problog_export("+str", "+str")
-def sqlite_load(filename, pattern=None):
+@problog_export("+str", "-term")
+def load_inductive_db(filename):
     """
     Load predicates from a database
 
     :param filename: The database filename
     :type filename: str
 
-    :param pattern: optional, a pattern of the predicated to load
-        TODO: give an example
-    :type pattern: str
-
-    :return: An empty tuple (No Problog unification)
+    :return: The database Term
+    :rtype: Problog Object
     """
-    if pattern:
-        values = get_pattern_values(pattern)
+
     fin = problog_export.database.resolve_filename(filename)
     if fin:
         filename = fin
-    conn = sqlite3.connect(filename)
-    cursor = conn.cursor()
 
-    sql = "SELECT name FROM sqlite_master WHERE type='table'"
-    if pattern:
-        sql += " AND name='" + values[0] + "pass'"
-    sql += ";"
-    cursor.execute(sql)
-    tables = [x[0] for x in cursor.fetchall()]
-    cursor.close()
+    idb = InductiveDBWrapper(filename)
 
-    for table in tables:
-        columns = get_colnames(conn, table)
-        types = ["+term"] * len(columns)
-        where = values[1] if pattern else None
-        problog_export_raw(*types)(
-            QueryFunc(conn, table, columns, where=where), funcname=table, modname=None
-        )
+    # Say to Problog engine that if scopes are queried, the inductive database has to be called first
+    problog_export_raw(["+term", "+term"])(idb(), funcname="':'", modname=None)
 
-    return ()
+    return Object(idb)
+
+
+#######################
+#                     #
+#       Classes       #
+#                     #
+#######################
+
+
+class InductiveDBWrapper:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def __call__(self, *args, **kwargs):
+        return []
+
+
+#######################
+#                     #
+#         Old         #
+#        Stuff        #
+#                     #
+#######################
 
 
 @problog_export("+str", "+str")
