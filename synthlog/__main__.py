@@ -8,9 +8,7 @@ def execute(cmd):
     
     From: https://stackoverflow.com/a/4417735/3350448
     """
-    popen = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, universal_newlines=True
-    )
+    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
     popen.stdout.close()
@@ -21,9 +19,7 @@ def execute(cmd):
 
 def main():
     environment = os.path.join(os.path.dirname(__file__), "environment.pl")
-    for line in execute(
-        ["problog", environment] + sys.argv[1:] + ["--combine"]
-    ):
+    for line in execute(["problog", environment] + sys.argv[1:] + ["--combine"]):
         print(line, end="")
 
 
