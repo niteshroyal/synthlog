@@ -134,15 +134,19 @@ def detect_tables(scope, **kwargs):
 @problog_export_nondet("+term", "-term")
 def tacle(scope, **kwargs):
     tables = scope_to_tables(scope, kwargs)
-    data = cells_to_matrix(get_terms_from_scope(scope, "cell", kwargs))
+    data = cells_to_matrix(get_terms_from_scope(scope, "cell", **kwargs))
     constraints = learn_from_cells(data, tables=tables)
     return [init_constraint(c) for c in constraints]
 
 
 def translate_constraint(constraint: Constraint):
     if isinstance(constraint.template, AllDifferent):
+        block = constraint[AllDifferent.x]
+        print(block)
         # ensure_false :- table_cell('T1', R1, 4, V), table_cell('T1', R2, 4, V), R1 \= R2.
-        return Clause(Term("ensure_false"), Term("'{}'".format()))
+        return Clause(
+            Term("ensure_false"), init_table_cell(block.table.name, "R1", block)
+        )
 
 
 @problog_export_nondet("+term", "+term", "+term", "+term", "+term", "-term")
@@ -161,6 +165,13 @@ def matrix_to_atoms(table_name, header, cell_row, cell_type, cell_value, **kwarg
         result.append(Term(header + "_" + cell_value, Constant(row_id)))
 
     return result
+
+
+@problog_export_nondet("+term", "+term", "-term")
+def scope_minus(scope1, scope2, **kwargs):
+    terms1 = set(get_terms_from_scope(scope1, **kwargs))
+    terms2 = set(get_terms_from_scope(scope2, **kwargs))
+    return terms1 - terms2
 
 
 #######################
@@ -193,9 +204,9 @@ def table_cells_to_matrix(table_cell_terms):
 
 
 def scope_to_tables(scope, kwargs):
-    tables = get_terms_from_scope(scope, "table", kwargs)
-    table_cells = get_terms_from_scope(scope, "table_cell", kwargs)
-    table_types = get_terms_from_scope(scope, "table_cell_type", kwargs)
+    tables = get_terms_from_scope(scope, "table", **kwargs)
+    table_cells = get_terms_from_scope(scope, "table_cell", **kwargs)
+    table_types = get_terms_from_scope(scope, "table_cell_type", **kwargs)
 
     tacle_tables = []
     for table in tables:
@@ -247,11 +258,11 @@ def convert_to_matrix(terms, extract_y_f, extract_x_f, extract_val_f):
     return matrix
 
 
-def get_terms_from_scope(scope, term_name, kwargs):
+def get_terms_from_scope(scope, term_name=None, **kwargs):
     engine = kwargs["engine"]
     database = kwargs["database"]
     return [
         t[1]
         for t in engine.query(database, Term("':'", scope, None), subcall=True)
-        if t[1].functor == term_name
+        if term_name is None or t[1].functor == term_name
     ]
