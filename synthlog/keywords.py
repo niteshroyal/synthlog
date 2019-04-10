@@ -72,8 +72,8 @@ def init_table_cell(table_name, row, column, value):
     :rtype: Problog term
     """
     return Term(
-        "table_header",
-        Constant(table_name),
+        "table_cell",
+        Constant("'{}'".format(table_name)),
         Constant(row),
         Constant(column),
         Constant(value),

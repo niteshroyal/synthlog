@@ -7,6 +7,7 @@ from problog.extern import (
     problog_export_nondet,
 )
 import sklearn
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
 
 import importlib
@@ -32,24 +33,22 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     # raise RuntimeError(target_columns, type(target_columns), type(target_columns[0]))
     # raise RuntimeWarning([t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]])
     # raise RuntimeError(table_cell_term_list, table_cell_term_list[0].value, type(table_cell_term_list[0].value))
-    # matrix = cells_to_matrix()
 
-    print(unquote(term2str(target_columns[0].args[0])))
-    print(term2str(table_cell_term_list[0].args[0]))
+    relevant_table = [t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]]
+
+    matrix = cells_to_matrix(relevant_table)
+
+    clf = DecisionTreeClassifier()
+
+    src_cols = [s.args[1].value for s in source_columns]
+    tgt_cols = [s.args[1].value for s in target_columns]
+
+    print(type(matrix), matrix.shape)
+    clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
+
+    print(clf, clf.get_params())
     quit()
 
-    """
-    raise RuntimeError([t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0].value],
-                       [t for t in table_cell_term_list if t.args[0].value == target_columns[0].args[0]],
-                       [t for t in table_cell_term_list if t.args[0].value == target_columns[0].args[0].value])
-    """
-
-    clf = sklearn.tree.DecisionTreeClassifier()
-
-    src_cols = source_columns.args[1]
-    # tgt_cols =
-
-    clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
 
     # raise RuntimeError(matrix)
 

@@ -12,8 +12,8 @@ query(magic_tables:_).
 
 % Train a classifier
 magic_models:X :-decision_tree(magic_tables,
-                                [column('T1', 0), column('T1', 1)],
-                                [column('T1', 2)],
+                                [column('T1', 2), column('T1', 3)],
+                                [column('T1', 4)],
                                 X).
 
 query(magic_models:_).
