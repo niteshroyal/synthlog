@@ -8,12 +8,16 @@
 magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 magic_tables:X :- detect_tables(magic_cells, X).
 
-query(magic_tables:_).
-
 % Train a classifier
 magic_models:X :-decision_tree(magic_tables,
                                 [column('T1', 2), column('T1', 3)],
                                 [column('T1', 4)],
                                 X).
 
-query(magic_models:_).
+
+
+%query(magic_models:_).
+
+magic_predict:X :- magic_models:predictor(Y), predict(magic_tables, Y, [column('T1', 2), column('T1', 3)], X).
+
+query(magic_predict:_).

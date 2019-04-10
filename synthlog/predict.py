@@ -6,15 +6,18 @@ from problog.extern import (
     problog_export_raw,
     problog_export_nondet,
 )
-import sklearn
+
+from itertools import product
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
 
 import importlib
 import sys
 import ast
+
 import numpy as np
 
+from synthlog.keywords import init_cell_pred
 from problog.errors import UserError
 from problog.logic import (
     Term,
@@ -39,10 +42,6 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
         if t[1].functor == "table_cell"
     ]
 
-    # raise RuntimeError(target_columns, type(target_columns), type(target_columns[0]))
-    # raise RuntimeWarning([t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]])
-    # raise RuntimeError(table_cell_term_list, table_cell_term_list[0].value, type(table_cell_term_list[0].value))
-
     relevant_table = [
         t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]
     ]
@@ -54,15 +53,53 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     src_cols = [s.args[1].value for s in source_columns]
     tgt_cols = [s.args[1].value for s in target_columns]
 
-    print(type(matrix), matrix.shape)
     clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
 
-    print(clf, clf.get_params())
-    quit()
+    return [Term("predictor", Object(clf)), Term("decision_tree", Object(clf))]
 
-    # raise RuntimeError(matrix)
 
-    return []
+@problog_export_nondet("+term", "+term", "+list", "-term")
+def predict(scope, predictor, source_columns, **kwargs):
+
+    prediction = Term(
+        "prediction", Object(scope), Object(predictor), Object(source_columns)
+    )
+
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+    table_cell_term_list = [
+        t[1]
+        for t in engine.query(database, Term("':'", scope, None), subcall=True)
+        if t[1].functor == "table_cell"
+    ]
+
+    relevant_table = [
+        t for t in table_cell_term_list if t.args[0] == source_columns[0].args[0]
+    ]
+
+    matrix = cells_to_matrix(relevant_table)
+
+    src_cols = [s.args[1].value for s in source_columns]
+
+    clf = predictor.functor
+    y_pred = clf.predict(matrix[:, src_cols])
+
+    if len(y_pred.shape) == 1:
+        y_pred = np.atleast_2d(y_pred).T
+
+    n_rows, n_cols = y_pred.shape
+
+    result = []
+    for r, c in product(range(n_rows), range(n_cols)):
+        result.append(init_cell_pred(r, c, y_pred[r, c], prediction))
+
+    source_term = Term("source", prediction, Object(source_columns))
+
+    predictor_term = Term("predictor", prediction, Object(predictor))
+
+    result += [source_term, predictor_term]
+
+    return result
 
 
 def cells_to_matrix(cell_term_list):
