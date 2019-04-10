@@ -1,11 +1,7 @@
 from __future__ import print_function
 
 from problog import get_evaluatable
-from problog.extern import (
-    problog_export,
-    problog_export_nondet,
-    problog_export_raw,
-)
+from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
 from problog.logic import Term, term2list, Constant, unquote
 from problog.errors import UserError, InvalidValue
@@ -195,6 +191,4 @@ def init_cell(row_id, col_id, value, p=None):
     :return: The cell Term
     :rtype: Problog Term
     """
-    return Term(
-        "cell", Constant(row_id), Constant(col_id), Constant(value), p=p
-    )
+    return Term("cell", Constant(row_id), Constant(col_id), Constant(value), p=p)
