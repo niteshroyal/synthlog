@@ -12,31 +12,47 @@ magic_models:X :-decision_tree(magic_tables,
                                 [column('T1', 4)],
                                 X).
 
+magic_models:X :-decision_tree(magic_tables,
+                                [column('T1', 2), column('T1', 5)],
+                                [column('T1', 3)],
+                                X).
+
+% Collect all predictors
+query(magic_models:predictor(_)).
+
+% All sources of predictors
+all_sources(Z) :- magic_models:predictor(X), magic_models:source(X, Z).
+query(all_sources(_)).
+
+% All sources of predictors
+all_targets(Z) :- magic_models:predictor(X), magic_models:target(X, Z).
+query(all_targets(_)).
+
+% Get predictor that predicts target 4
+target_4_predictors(X) :- magic_models:target(X,column('T1',4)).
+query(target_4_predictors(_)).
+
+% Get predictors that have as input column 5
+column_5_predictors(X) :- magic_models:source(X, column('T1', 5)).
+query(column_5_predictors(_)).
+
+% Get predictors that have as input column 2
+column_2_predictors(X) :- magic_models:source(X, column('T1', 2)).
+query(column_2_predictors(_)).
+
+
 % Do a prediction
 magic_predict:X :- magic_models:predictor(Y), predict(magic_tables, Y, [column('T1', 2), column('T1', 3)], X).
+query(magic_predict:prediction(_)).
 
-% Get all predictions in scope
-my_predictions(Z):-magic_predict:prediction(Z). % All prediction objects
-query(my_predictions(_)).
+% Get source columns from prediction
+source_column_pred(X) :- magic_predict:prediction(Y), magic_predict:source(Y, X).
+query(source_column_pred(_)).
+% Should get [column('T1', 2), column('T1', 3)]
 
-% Get source columns of all these predictions
-prediction_src(Z):-my_predictions(X), magic_predict:source(X, Z). % Sources of all the prediction objects
-query(prediction_src(_)).
-
-% All target columns of your predictions (you have to look back at its predictor)
-prediction_tgt(Z):-my_predictions(X), magic_predict:predictor(X, Y), magic_models:target(Y, Z).
-query(prediction_tgt(_)).
+% Get target columns of prediction
+target_columns_pred(X) :- magic_predict:prediction(Y), magic_predict:predictor(Y, Z), magic_models:target(Z,X).
+query(target_columns_pred(_)).
+% We expect to get column 3 and 4
 
 
-% Get all predictors in your scope
-my_predictors(Z):-magic_models:predictor(Z).
-query(my_predictors(_)).
-
-% All targets of these predictors
-tgt_predictors(Z):-my_predictors(X), magic_models:target(X, Z).
-query(tgt_predictors(_)).
-
-% Get all the predictors (in your scope) that predict a certain target column
-relevant_predictors(Z):- magic_models:target(Z, column('T1', 4)).
-
-query(relevant_predictors(_)).
