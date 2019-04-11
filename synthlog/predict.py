@@ -50,11 +50,12 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
     Learn a random forest predictor on scope. It uses source_columns to predict target_columns
     :param scope: A scope, containing table_cell predicates describing a table content.
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        Source column should have numeric values.
     :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
     :return: A list of Terms.
     predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-    random forest(<predictor> is created, with <predictor> the scikit-learn predictor object.
+    random_forest(<predictor> is created, with <predictor> the scikit-learn predictor object.
     target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     """
@@ -72,6 +73,7 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     Learn a decision tree predictor on scope. It uses source_columns to predict target_columns
     :param scope: A scope, containing table_cell predicates describing a table content.
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        Source column should have numeric values.
     :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
     :return: A list of Terms.
@@ -119,6 +121,12 @@ def scikit_learn_predictor(scope, source_columns, target_columns, clf, **kwargs)
 
     clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
 
+    def short_str(_self):
+        return "DT({})".format(hash(_self))
+
+    DecisionTreeClassifier.__repr__ = short_str
+    DecisionTreeClassifier.__str__ = short_str
+
     predictor_term = Term("predictor", Object(clf))
     decision_tree_term = [Term("decision_tree", Object(clf))]
     target_terms = [Term("target", Object(clf), t) for t in target_columns]
@@ -138,7 +146,7 @@ def predict(scope, predictor, source_columns, **kwargs):
     :return: Predictions from predictor using source_columns of scope, as well as predictions metadata.
     prediction(<scope>, <predictor>, <source_columns>) is created. <scope> is the scope parameter, as a Problog object, <predictor> is the predictor parameter, as a Problog object and <source_columns> are the source_columns parameter as a Problog object.
         This whole prediction/3 is used as a key for the prediction object. In the future, it might be better to use a unique identifier or something else!
-    cell_pred(<row_id>, <col_id>, <value>, <prediction_term>) are created for each prediction. <row_id> and <col_id> are indexed from (0,0), and NOT from the table_cell row and column ids.
+    cell_pred(<row_id>, <col_id>, <value>, <prediction_term>) are created for each prediction. <row_id> and <col_id> are (1,1) indexed, NOT from the table_cell row and column ids.
         The <col_id> corresponds to the index of the target column of predictor. <value> is the predicted value. <prediction_term> is whole prediction(<scope>, <predictor>, <source_columns>) defined above.
     predictor(<prediction_term>, <predictor>) is created. <prediction_term> is whole prediction(<scope>, <predictor>, <source_columns>) defined above, <predictor> is the predictor parameter, as a Problog object
     source(<prediction_term>, <source_column>) are created for each source_column. <prediction_term> is whole prediction(<scope>, <predictor>, <source_columns>) defined above, <source_column> is column(<table_name>, <col_number>)
@@ -163,9 +171,6 @@ def predict(scope, predictor, source_columns, **kwargs):
 
     matrix = cells_to_matrix(relevant_table)
 
-    # TODO: Handle non numeric variables
-    # Idea: carry a transformer for each column?
-
     src_cols = [s.args[1].value for s in source_columns]
 
     clf = predictor.functor
@@ -178,7 +183,9 @@ def predict(scope, predictor, source_columns, **kwargs):
 
     cell_pred_terms = []
     for r, c in product(range(n_rows), range(n_cols)):
-        cell_pred_terms.append(init_cell_pred(r, c, y_pred[r, c], prediction_term_3))
+        cell_pred_terms.append(
+            init_cell_pred(r + 1, c + 1, y_pred[r, c], prediction_term_3)
+        )
 
     predictor_term = [Term("predictor", prediction_term_3, Object(predictor))]
     source_terms = [Term("source", prediction_term_3, s) for s in source_columns]
@@ -316,3 +323,8 @@ class ScikitLearnClassifierWrapper(ClassifierWrapper):
         self.parse_parameters(params)
 
         self.clf = model_class(**self.parameters)
+
+
+@problog_export_nondet("+term", "+list", "-term")
+def _autocomplete(scope, targets):
+    pass
