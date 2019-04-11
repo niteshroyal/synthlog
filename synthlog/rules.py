@@ -6,9 +6,11 @@ from problog import get_evaluatable
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 from problog.logic import Term, term2list, Constant, unquote, term2str, Object
 import os
+from copy import copy
 
 from synthlog.probfoil.probfoil import ProbFOIL2
 from synthlog.probfoil.data import DataFile
+from synthlog.probfoil.score import accuracy, precision, recall
 
 
 @problog_export_nondet("+term", "+term", "-term")
@@ -84,7 +86,7 @@ def probfoil(scope, target_predicate, **kwargs):
 
     data = DataFile(PrologFile(inputFile))
     # print(data._database._ClauseDB__nodes)
-    hypothesis = ProbFOIL2(data, beam_size=5).learn()
+    hypothesis = ProbFOIL2(data, beam_size=5, l=3).learn()
     result = [Term("predictor", Object(hypothesis))]
 
     rules = hypothesis.to_clauses(hypothesis.target.functor)
@@ -102,8 +104,26 @@ def probfoil(scope, target_predicate, **kwargs):
 
     else:
         result.append(Term("blackbox_rule", Constant(0), Object(hypothesis)))
-        result.append(
-            Term("whitebox_rule", Constant(count), *hypothesis.get_literals())
-        )
+        result.append(Term("whitebox_rule", Constant(0), *hypothesis.get_literals()))
+
+    return result + evaluate_probfoil_rules(hypothesis)
+
+
+def evaluate_probfoil_rules(hypothesis):
+
+    rule = hypothesis
+    rule_list = []
+    count = 0
+    while rule.previous is not None:
+        rule_list.append(copy(rule))
+        rule_list[count].previous = None
+        rule = rule.previous
+        count += 1
+
+    result = []
+    for i, rule in enumerate(rule_list):
+        result.append(Term("accuracy_rule", Constant(i), Constant(accuracy(rule))))
+        result.append(Term("precision_rule", Constant(i), Constant(precision(rule))))
+        result.append(Term("recall_rule", Constant(i), Constant(recall(rule))))
 
     return result
