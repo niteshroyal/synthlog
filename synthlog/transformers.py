@@ -34,6 +34,33 @@ from synthlog.predict import cells_to_matrix
 
 @problog_export_nondet("+term", "+list", "-term")
 def ordinal_encoder(scope, source_columns, **kwargs):
+    """
+    Fit OrdinalEncoder transformer on scope. It uses source_columns to learn the transformation
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+    :param kwargs:
+    :return: A list of Terms.
+    transformer(<transformer>) is created, with <transformer> the scikit-learn transformer object.
+    ordinal_encoder(<transformer>) is created, with <transformer> the scikit-learn transformer object.
+    source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    """
+    transformer = OrdinalEncoder()
+    sklearn_res = scikit_learn_transformer(scope, source_columns, transformer, **kwargs)
+    ordinal_encoder_term = Term("ordinal_encoder", Object(transformer))
+    return sklearn_res + [ordinal_encoder_term]
+
+
+def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
+    """
+    Fit scikit learn transformer on scope. It uses source_columns to learn the transformation
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+    :param transformer: The transformer to use
+    :param kwargs:
+    :return: A list of Terms.
+    transformer(<transformer>) is created, with <transformer> the scikit-learn transformer object.
+    source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    """
     engine = kwargs["engine"]
     database = kwargs["database"]
 
@@ -51,23 +78,20 @@ def ordinal_encoder(scope, source_columns, **kwargs):
 
     src_cols = [s.args[1].value for s in source_columns]
 
-    encoder = OrdinalEncoder()
+    transformer.fit(matrix[:, src_cols])
 
-    encoder.fit(matrix[:, src_cols])
-
-    transformer_term = Term("transformer", Object(encoder))
-    ordinal_encoder_term = Term("ordinal_encoder", Object(encoder))
+    transformer_term = Term("transformer", Object(transformer))
     col_transformation_terms = [
-        Term("source", Object(encoder), s) for s in source_columns
+        Term("source", Object(transformer), s) for s in source_columns
     ]
 
-    return [transformer_term, ordinal_encoder_term] + col_transformation_terms
+    return [transformer_term] + col_transformation_terms
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
 def transform(scope, transformer, source_columns, **kwargs):
     """
-    Transfomr values using a transformer that was fitted on data. It uses source_columns of scope to transform the data
+    Transform values using a transformer that was fitted on data. It uses source_columns of scope to transform the data
     :param scope: A scope, containing table_cell predicates describing a table content.
     :param transformer: A scikit-learn transformer, stored as a Problog Object (accessible through transformer(<transformer>) of the ordinal_encoder function for example).
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the transformer.
