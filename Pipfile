@@ -12,6 +12,7 @@ openpyxl = "*"
 problog = {editable = true,git = "https://bitbucket.org/problog/problog.git"}
 synthlog = {editable = true,path = "."}
 sklearn = "*"
+probfoil = "*"
 
 [requires]
 python_version = "3.6"
