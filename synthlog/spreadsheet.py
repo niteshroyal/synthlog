@@ -1,9 +1,8 @@
 from __future__ import print_function
 
-from problog import get_evaluatable
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
-from problog.logic import Term, term2list, Constant, unquote
+from problog.logic import Term, term2list, Constant, unquote, term2str, Clause
 from problog.errors import UserError, InvalidValue
 
 import os
@@ -11,10 +10,9 @@ import openpyxl as xls
 import csv
 import numpy as np
 
-from problog.program import PrologString
-
-from tacle import tables_from_cells
-from tacle.indexing import Orientation
+from tacle import tables_from_cells, learn_from_csv, learn_from_cells, Constraint
+from tacle.core.template import AllDifferent
+from tacle.indexing import Orientation, Table, Range
 
 from synthlog.keywords import (
     init_cell,
@@ -22,6 +20,7 @@ from synthlog.keywords import (
     init_table_cell,
     init_table_cell_type,
     init_table_header,
+    init_constraint,
 )
 
 
@@ -104,7 +103,6 @@ def detect_tables(scope, **kwargs):
             if matrix[i, j] is None:
                 matrix[i, j] = ""
     tables = tables_from_cells(matrix, Orientation.vertical)
-
     result = []
     for table in tables:
         result.append(
@@ -135,7 +133,20 @@ def detect_tables(scope, **kwargs):
 
 @problog_export_nondet("+term", "-term")
 def tacle(scope, **kwargs):
-    table_cells = get_terms_from_scope(scope, "table_cells", kwargs)
+    tables = scope_to_tables(scope, kwargs)
+    data = cells_to_matrix(get_terms_from_scope(scope, "cell", **kwargs))
+    constraints = learn_from_cells(data, tables=tables)
+    return [init_constraint(c) for c in constraints]
+
+
+def translate_constraint(constraint: Constraint):
+    if isinstance(constraint.template, AllDifferent):
+        block = constraint[AllDifferent.x]
+        print(block)
+        # ensure_false :- table_cell('T1', R1, 4, V), table_cell('T1', R2, 4, V), R1 \= R2.
+        return Clause(
+            Term("ensure_false"), init_table_cell(block.table.name, "R1", block)
+        )
 
 
 @problog_export_nondet("+term", "+term", "+term", "+term", "+term", "-term")
@@ -156,6 +167,13 @@ def matrix_to_atoms(table_name, header, cell_row, cell_type, cell_value, **kwarg
     return result
 
 
+@problog_export_nondet("+term", "+term", "-term")
+def scope_minus(scope1, scope2, **kwargs):
+    terms1 = set(get_terms_from_scope(scope1, **kwargs))
+    terms2 = set(get_terms_from_scope(scope2, **kwargs))
+    return terms1 - terms2
+
+
 #######################
 #                     #
 #      Functions      #
@@ -172,6 +190,10 @@ def cells_to_matrix(cell_terms):
     )
 
 
+def table_cell_types_to_matrix(table_cell_type_terms):
+    return table_cells_to_matrix(table_cell_type_terms)
+
+
 def table_cells_to_matrix(table_cell_terms):
     return convert_to_matrix(
         table_cell_terms,
@@ -179,6 +201,39 @@ def table_cells_to_matrix(table_cell_terms):
         lambda t: t.args[2].value,
         lambda t: t.args[3].value,
     )
+
+
+def scope_to_tables(scope, kwargs):
+    tables = get_terms_from_scope(scope, "table", **kwargs)
+    table_cells = get_terms_from_scope(scope, "table_cell", **kwargs)
+    table_types = get_terms_from_scope(scope, "table_cell_type", **kwargs)
+
+    tacle_tables = []
+    for table in tables:
+        table_name = unquote(term2str(table.args[0].value))
+        data = table_cells_to_matrix(
+            [c for c in table_cells if c.args[0] == table.args[0]]
+        )
+        type_data = table_cell_types_to_matrix(
+            [c for c in table_types if c.args[0] == table.args[0]]
+        )
+        t_range = Range(
+            table.args[2].value - 1,
+            table.args[1].value - 1,
+            table.args[4].value,
+            table.args[3].value,
+        )
+
+        table = Table(
+            data,
+            type_data,
+            t_range,
+            name=table_name,
+            orientations=[Orientation.vertical],
+        )
+        tacle_tables.append(table)
+
+    return tacle_tables
 
 
 def convert_to_matrix(terms, extract_y_f, extract_x_f, extract_val_f):
@@ -203,11 +258,11 @@ def convert_to_matrix(terms, extract_y_f, extract_x_f, extract_val_f):
     return matrix
 
 
-def get_terms_from_scope(scope, term_name, kwargs):
+def get_terms_from_scope(scope, term_name=None, **kwargs):
     engine = kwargs["engine"]
     database = kwargs["database"]
     return [
         t[1]
         for t in engine.query(database, Term("':'", scope, None), subcall=True)
-        if t[1].functor == term_name
+        if term_name is None or t[1].functor == term_name
     ]

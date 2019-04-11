@@ -1,4 +1,4 @@
-from problog.logic import Term, Constant
+from problog.logic import Term, Constant, Object
 
 
 def init_cell(row, column, value, p=None):
@@ -156,3 +156,7 @@ def init_table_header(table_name, column, value):
         Constant(column),
         Constant(value),
     )
+
+
+def init_constraint(constraint):
+    return Term("constraint", Object(constraint))

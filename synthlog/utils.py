@@ -5,6 +5,16 @@ from problog.extern import problog_export, problog_export_nondet, problog_export
 
 from problog.logic import Term, term2list, Constant, unquote
 from problog.errors import UserError, InvalidValue
+from problog.parser import PrologParser
+from problog.program import ExtendedPrologFactory
+
+
+@problog_export("+str")
+def parse_clause(term_string, engine=None, database=None, **kwargs):
+    parser = PrologParser(ExtendedPrologFactory())
+    res = parser.parseString(unquote(term_string))
+    database.add_clause(res[0])
+    return ()
 
 
 @problog_export("+str", "-term")
