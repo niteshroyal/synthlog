@@ -94,35 +94,31 @@ class InductiveDBWrapper:
         self.connection = sqlite3.connect(self.filename)
         self.cursor = self.connection.cursor()
         self.__init_tables()
-        self.__called = False
 
     def __call__(self, *args, **kwargs):
-        if self.__called:
-            return []
+        scope_args = ["%"] * 2
+        term_args = ["%"] * 3
+
+        if args:
+            if args[0]:
+                scope_args[0] = args[0].functor
+                scope_args[1] = args[0].arity
+            if args[1]:
+                term_args[1] = args[1].functor
+                term_args[2] = args[1].arity
 
         res = []
         with self.connection:
-            self.cursor.execute(
-                """
-                SELECT rowid, data
-                FROM scope 
-                """
-            )
-            scopes = dict(self.cursor.fetchall())
+            scopes = self.__get_scopes(*scope_args)
+            for scope_id, scope in scopes:
+                term_args[0] = scope_id
+                terms = self.__get_terms(*term_args)
 
-            self.cursor.execute(
-                """
-                SELECT scope, data
-                FROM term
-                """
-            )
-            terms = self.cursor.fetchall()
-            res = [
-                (pickle.loads(scopes[scope_id]), pickle.loads(term))
-                for scope_id, term in terms
-            ]
+                res += [
+                    (pickle.loads(scope), pickle.loads(term))
+                    for scope_id, term in terms
+                ]
 
-        self.__called = True
         return res
 
     def save_term(self, scope_name, scope_arity, scope, term_name, term_arity, term):
@@ -147,9 +143,9 @@ class InductiveDBWrapper:
                 """
                SELECT rowid, data 
                FROM term 
-               WHERE scope = ?
-               AND name = ?
-               AND arity = ?; 
+               WHERE scope LIKE ?
+               AND name LIKE ?
+               AND arity LIKE ?; 
                """,
                 (scope_id, name, arity),
             )
@@ -161,8 +157,8 @@ class InductiveDBWrapper:
                 """
                SELECT rowid, data 
                FROM scope 
-               WHERE name = ?
-               AND arity = ?; 
+               WHERE name LIKE ?
+               AND arity LIKE ?; 
                """,
                 (name, arity),
             )
