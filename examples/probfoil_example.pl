@@ -4,6 +4,7 @@ magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 % query(magic_cells:_).
 
 magic_tables:X :- detect_tables(magic_cells, X).
+% query(magic_tables:table(_,_,_,_,_)).
 %query(magic_tables:_).
 
 
@@ -29,5 +30,6 @@ magic_atoms:X :-
 %query(magic_atoms:_).
 
 % Learn probfoil rules for all atoms in the scope 'magic_atoms' with 'profit' as our target predicate
-probfoil_rules:X :- probfoil(magic_atoms, 'profit', X).
+%probfoil_rules:X :- probfoil(magic_atoms, 'profit', X).
+probfoil_rules:X :- probfoil_loop(magic_atoms, 'country', X).
 query(probfoil_rules:_).
