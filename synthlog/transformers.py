@@ -115,9 +115,9 @@ def scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs):
     )
 
     transformer_term = Term("transformer", problog_obj)
-    col_transformation_terms = [Term("source", problog_obj, s) for s in source_columns]
+    source_terms = [Term("source", problog_obj, s) for s in source_columns]
 
-    return [transformer_term] + col_transformation_terms
+    return [transformer_term] + source_terms
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
