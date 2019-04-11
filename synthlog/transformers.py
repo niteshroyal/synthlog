@@ -45,12 +45,13 @@ def ordinal_encoder(scope, source_columns, **kwargs):
     source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     """
     transformer = OrdinalEncoder()
-    sklearn_res = scikit_learn_transformer(scope, source_columns, transformer, **kwargs)
-    ordinal_encoder_term = Term("ordinal_encoder", Object(transformer))
+    problog_obj = Object(transformer)
+    sklearn_res = scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs)
+    ordinal_encoder_term = Term("ordinal_encoder", problog_obj)
     return sklearn_res + [ordinal_encoder_term]
 
 
-def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
+def scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs):
     """
     Fit scikit learn transformer on scope. It uses source_columns to learn the transformation
     :param scope: A scope, containing table_cell predicates describing a table content.
@@ -63,6 +64,27 @@ def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
     """
     engine = kwargs["engine"]
     database = kwargs["database"]
+
+    transformer = problog_obj.functor
+
+    # We try to retrieve the model trained with the same parameters
+    res_predictor_object = [
+        t
+        for t in engine.query(
+            database, Term("transformer_object", None, None, None), subcall=True
+        )
+    ]
+
+    # If we succeed, we retrieve the previously trained object.
+    # If not, we train a new one
+    for r in res_predictor_object:
+        if term2str(scope) == r[0].functor and r[1].functor == source_columns:
+            problog_obj = r[2]
+            source_columns = r[1].functor
+
+            transformer_term = Term("transformer", problog_obj)
+            source_terms = [Term("source", problog_obj, s) for s in source_columns]
+            return [transformer_term] + source_terms
 
     table_cell_term_list = [
         t[1]
@@ -80,10 +102,13 @@ def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
 
     transformer.fit(matrix[:, src_cols])
 
-    transformer_term = Term("transformer", Object(transformer))
-    col_transformation_terms = [
-        Term("source", Object(transformer), s) for s in source_columns
-    ]
+    # We add the new predictor in the database to be able to retrieve it in future calls
+    database.add_fact(
+        Term("transformer_object", scope, Object(source_columns), problog_obj)
+    )
+
+    transformer_term = Term("transformer", problog_obj)
+    col_transformation_terms = [Term("source", problog_obj, s) for s in source_columns]
 
     return [transformer_term] + col_transformation_terms
 
@@ -105,7 +130,7 @@ def transform(scope, transformer, source_columns, **kwargs):
     source(<transformation_term>, <source_column>) are created for each source_column. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <source_column> is column(<table_name>, <col_number>)
     """
     transformation_term_3 = Term(
-        "transformation", Object(scope), Object(transformer), Object(source_columns)
+        "transformation", Object(scope), transformer, Object(source_columns)
     )
 
     transformation_term_1 = Term("transformation", transformation_term_3)
@@ -140,7 +165,7 @@ def transform(scope, transformer, source_columns, **kwargs):
             init_cell_transform(r + 1, c + 1, y_transform[r, c], transformation_term_3)
         )
 
-    transformer_term = [Term("transformer", transformation_term_3, Object(transformer))]
+    transformer_term = [Term("transformer", transformation_term_3, transformer)]
     source_terms = [Term("source", transformation_term_3, s) for s in source_columns]
 
     return (
