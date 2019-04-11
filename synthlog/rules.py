@@ -46,7 +46,7 @@ def evaluate_probfoil_rules(hypothesis, init):
 
 
 def rules2scope(hypothesis, init):
-    result = [Term("predictor", Object(hypothesis))]
+    result = [Term("predictor", Constant(str(hypothesis) + "."))]
     rules = hypothesis.to_clauses(hypothesis.target.functor)
 
     # First rule is failing rule: don't print it if there are other rules.

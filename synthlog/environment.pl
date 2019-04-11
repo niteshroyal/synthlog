@@ -3,3 +3,4 @@
 :- use_module(library(aggregate)).
 :- use_module(library(lists)).
 list(X,X).
+:- use_module('../synthlog/utils.py').

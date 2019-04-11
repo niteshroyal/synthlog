@@ -4,6 +4,7 @@ import warnings
 from .encoding import codes_to_query
 
 from .debug import debug_print
+
 VERBOSITY = 0
 
 
@@ -26,7 +27,7 @@ def collect_and_verify_clf_classlabels(m_list, m_codes):
     _, m_targ, _ = codes_to_query(m_codes)
 
     nb_atts = len(m_codes[0])
-    clf_labels = initialize_classlabels(nb_atts, mode='default')
+    clf_labels = initialize_classlabels(nb_atts, mode="default")
 
     for m_idx, m in enumerate(m_list):
         # Collect the classlabels of one model
@@ -70,19 +71,21 @@ def collect_classlabels(m):
 
     """
 
-    if not hasattr(m, 'classes_'):
+    if not hasattr(m, "classes_"):
         # If no classlabels are present, assume a fully numerical model
-        m_classlabels = initialize_classlabels(m.n_outputs_, mode='numeric')
+        m_classlabels = initialize_classlabels(m.n_outputs_, mode="numeric")
     elif m.classes_ is None:
         # If no classlabels are present, assume a fully numerical model
-        m_classlabels = initialize_classlabels(m.n_outputs_, mode='numeric')
+        m_classlabels = initialize_classlabels(m.n_outputs_, mode="numeric")
     elif isinstance(m.classes_, np.ndarray):
         # Single-target sklearn output; wrap in array
         m_classlabels = [m.classes_]
     elif isinstance(m.classes_, list):
         m_classlabels = m.classes_
     else:
-        msg = "Did not recognize the classlabels: {} of this model: {}".format(m.classes_, m)
+        msg = "Did not recognize the classlabels: {} of this model: {}".format(
+            m.classes_, m
+        )
         raise TypeError(msg)
 
     return m_classlabels
@@ -112,26 +115,28 @@ def update_clf_labels(clf_labels, m_classlabels, m_targ):
 
     for t_idx, t in enumerate(m_targ):
 
-        old_labels = clf_labels[t]          # Classlabels known to MERCS
-        new_labels = m_classlabels[t_idx]   # Classlabels known to the model m
+        old_labels = clf_labels[t]  # Classlabels known to MERCS
+        new_labels = m_classlabels[t_idx]  # Classlabels known to the model m
 
-        msg = "New_labels are: {}\n" \
-              "Type new_labels is: {}\n".format(new_labels, type(new_labels))
+        msg = "New_labels are: {}\n" "Type new_labels is: {}\n".format(
+            new_labels, type(new_labels)
+        )
         debug_print(msg, V=VERBOSITY, warn=True)
-        msg = "Old_labels are: {}\n" \
-              "Type old_labels is: {}\n".format(old_labels, type(old_labels))
+        msg = "Old_labels are: {}\n" "Type old_labels is: {}\n".format(
+            old_labels, type(old_labels)
+        )
         debug_print(msg, V=VERBOSITY, warn=True)
 
         assert isinstance(old_labels, (list, np.ndarray))
         assert isinstance(new_labels, (list, np.ndarray))
 
         if isinstance(old_labels, list):
-            if old_labels == initialize_classlabels(1, mode='default')[0]:
+            if old_labels == initialize_classlabels(1, mode="default")[0]:
                 # Replace default value
                 clf_labels[t] = new_labels
-            elif old_labels == initialize_classlabels(1, mode='numeric')[0]:
+            elif old_labels == initialize_classlabels(1, mode="numeric")[0]:
                 # Both old and new labels must agree on being numeric
-                assert new_labels == initialize_classlabels(1, mode='numeric')[0]
+                assert new_labels == initialize_classlabels(1, mode="numeric")[0]
             else:
                 msg = """
                 type(old_labels): \t{} is list\n
@@ -140,7 +145,9 @@ def update_clf_labels(clf_labels, m_classlabels, m_targ):
                 These are the only two cases in which we expect an entry of clf_labels
                 to be a list and not a np.ndarray.\n
                 Something must be wrong.
-                """.format(type(old_labels))
+                """.format(
+                    type(old_labels)
+                )
                 raise TypeError(msg)
         elif isinstance(old_labels, np.ndarray):
             # Join current m_classlabels with those already present
@@ -172,15 +179,15 @@ def join_classlabels(classlabels_list):
     return all_unique_classes
 
 
-def initialize_classlabels(nb_atts, mode='default'):
+def initialize_classlabels(nb_atts, mode="default"):
 
-    if mode in {'default'}:
-        classlabels = [['default'] for i in range(nb_atts)]
-    elif mode in {'numeric'}:
-        classlabels = [['numeric'] for i in range(nb_atts)]
+    if mode in {"default"}:
+        classlabels = [["default"] for i in range(nb_atts)]
+    elif mode in {"numeric"}:
+        classlabels = [["numeric"] for i in range(nb_atts)]
     else:
         msg = "Did not recognize mode: {}. Assuming 'default'".format(mode)
         warnings.warn(msg)
-        classlabels = initialize_classlabels(nb_atts, mode='default')
+        classlabels = initialize_classlabels(nb_atts, mode="default")
 
     return classlabels
