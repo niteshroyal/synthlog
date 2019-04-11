@@ -5,4 +5,4 @@ idb(IDB) :- load_inductive_db('db_file.db', IDB).
 
 test:test.
 
-query(_:_).
+query(a:_).
