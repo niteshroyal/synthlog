@@ -121,6 +121,12 @@ def scikit_learn_predictor(scope, source_columns, target_columns, clf, **kwargs)
 
     clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
 
+    def short_str(_self):
+        return "DT({})".format(hash(_self))
+
+    DecisionTreeClassifier.__repr__ = short_str
+    DecisionTreeClassifier.__str__ = short_str
+
     predictor_term = Term("predictor", Object(clf))
     decision_tree_term = [Term("decision_tree", Object(clf))]
     target_terms = [Term("target", Object(clf), t) for t in target_columns]
@@ -317,3 +323,8 @@ class ScikitLearnClassifierWrapper(ClassifierWrapper):
         self.parse_parameters(params)
 
         self.clf = model_class(**self.parameters)
+
+
+@problog_export_nondet("+term", "+list", "-term")
+def _autocomplete(scope, targets):
+    pass
