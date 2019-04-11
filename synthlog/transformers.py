@@ -44,6 +44,13 @@ def ordinal_encoder(scope, source_columns, **kwargs):
     ordinal_encoder(<transformer>) is created, with <transformer> the scikit-learn transformer object.
     source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     """
+
+    def short_str(_self):
+        return "OE({})".format(id(_self))
+
+    OrdinalEncoder.__repr__ = short_str
+    OrdinalEncoder.__str__ = short_str
+
     transformer = OrdinalEncoder()
     problog_obj = Object(transformer)
     sklearn_res = scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs)

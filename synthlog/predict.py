@@ -62,7 +62,7 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
     """
 
     def short_str(_self):
-        return "DT({})".format(id(_self))
+        return "RF({})".format(id(_self))
 
     RandomForestClassifier.__repr__ = short_str
     RandomForestClassifier.__str__ = short_str
