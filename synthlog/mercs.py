@@ -33,9 +33,40 @@ from synthlog.keywords import init_cell_pred
 @problog_export_nondet("+term", "+list", "-term")
 def mercs(scope, source_columns, **kwargs):
 
-    # Getting input data
+    # Preliminaries
     engine = kwargs["engine"]
     database = kwargs["database"]
+
+    def short_str(_self):
+        return "MERCS({})".format(id(_self))
+
+    MERCS.__repr__ = short_str
+    MERCS.__str__ = short_str
+
+    # Verify whether or not a MERCS model already exists with these exact same parameters
+    res_predictor_object = [
+        t
+        for t in engine.query(
+            database, Term("predictor_object", None, None, None), subcall=True
+        )
+    ]
+
+    # If found, return the existing object. If not, create a predictor.
+    for r in res_predictor_object:
+        if (
+            term2str(scope) == r[0].functor
+            and r[1].functor == source_columns
+        ):
+            problog_obj = r[2]
+            source_columns = r[1].functor
+
+            predictor_term = Term("predictor", problog_obj)
+            mercs_term = Term("mercs", problog_obj)
+            target_terms = [Term("target", problog_obj, t) for t in source_columns]
+            source_terms = [Term("source", problog_obj, s) for s in source_columns]
+            return [predictor_term] + [mercs_term] + source_terms + target_terms
+
+    # Getting input data
     table_cell_term_list = [
         t[1]
         for t in engine.query(database, Term("':'", scope, None), subcall=True)
@@ -57,15 +88,21 @@ def mercs(scope, source_columns, **kwargs):
     data = pd.DataFrame(matrix)  # MERCS still needs this (elia: I'm so sorry)
     clf.fit(data)
 
-    predictor_term = Term("predictor", Object(clf))
-    mercs_term = [Term("mercs", Object(clf))]
-    source_terms = [Term("source", Object(clf), s) for s in source_columns]
-    target_terms = [
-        Term("target", Object(clf), s) for s in source_columns
-    ]  # MERCS can predict everything it had as input
+    problog_obj = Object(clf)
 
-    # Whitebox
+    # We add the new predictor in the database to be able to retrieve it in future calls
+    database.add_fact(
+        Term(
+            "predictor_object",
+            scope,
+            Object(source_columns),
+            problog_obj,
+        )
+    )
 
-    # print(source_terms[0].args[0])
+    predictor_term = Term("predictor", problog_obj)
+    mercs_term = Term("mercs", problog_obj)
+    target_terms = [Term("target", problog_obj, t) for t in source_columns]
+    source_terms = [Term("source", problog_obj, s) for s in source_columns]
 
-    return [predictor_term] + mercs_term + source_terms + target_terms
+    return [predictor_term] + source_terms + target_terms + [mercs_term]
