@@ -19,12 +19,27 @@ magic_models:X :-decision_tree(magic_tables,
 
 % Get all predictors in your scope
 my_predictors(Z):-magic_models:predictor(Z).
-query(my_predictors(_)).
+% query(my_predictors(_)).
 
 % All sources of these predictors
 src_predictors(Z):-my_predictors(X), magic_models:source(X, Z).
-query(src_predictors(_)).
+% query(src_predictors(_)).
 
 % All targets of these predictors
 tgt_predictors(Z):-my_predictors(X), magic_models:target(X, Z).
-query(tgt_predictors(_)).
+% query(tgt_predictors(_)).
+
+dt_one(X):- magic_models:decision_tree(X), magic_models:source(X, column('T1', 2)).
+dt_two(X):- magic_models:decision_tree(X), magic_models:source(X, column('T1', 5)).
+
+query(dt_one(_)).
+query(dt_two(_)).
+
+src_one(Z):- dt_one(X), magic_models:source(X, Z).
+src_two(Z):- dt_two(X), magic_models:source(X, Z).
+query(src_one(_)).
+query(src_two(_)).
+
+% Get all their sources
+all_src(Z) :- src_one(Z), src_two(Z).
+query(all_src(_)).
