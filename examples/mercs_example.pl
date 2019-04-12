@@ -16,13 +16,8 @@ magic_models:X :-mercs(magic_tables,
                         column('T1', 5)],
                        X).
 
-magic_models:X :-decision_tree(magic_tables,
-                               [column('T1', 2), column('T1', 5)],
-                               [column('T1', 3)],
-                               X).
-
 % Examine scope
-% query(magic_models:_).
+query(magic_models:_).
 
 all_dts(T) :- magic_models:decision_tree(T).
 all_mercs(M) :- magic_models:mercs(M).
@@ -33,5 +28,5 @@ src_mercs(S) :- magic_models:mercs(M), magic_models:source(M, S).
 src_overlap(S) :- src_dts(S), src_mercs(S).
 src_overlap_direct(S) :- magic_models:mercs(M), magic_models:source(M, S), magic_models:decision_tree(T), magic_models:source(T, S).
 
-query(src_overlap(_)). % Does work
-query(src_overlap_direct(_)). % Does not work
+% query(src_overlap(_)). % Does work
+% query(src_overlap_direct(_)). % Does not work
