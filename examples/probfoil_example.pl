@@ -24,13 +24,20 @@ magic_tables:table_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_valu
 
 
 % Convert the matrix of cells to atoms
-magic_atoms:X :-
+magic_atoms:Atom :-
     magic_tables:table_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_value),
-    matrix_to_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_value, X).
-%query(magic_atoms:_).
+    matrix_to_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_value, Atom).
+% query(magic_atoms:_).
 
 % Learn probfoil rules for all atoms in the scope 'magic_atoms' with 'profit' as our target predicate
-probfoil_rules:X :- probfoil(magic_atoms, 'profit', X).
-probfoil_rules:X :- probfoil_loop(magic_atoms, 'country', X).
-query(probfoil_rules:predictor(_)).
+probfoil_rules:Rule :- probfoil(magic_atoms, 'profit', Rule).
+probfoil_rules:Rule :- probfoil_loop(magic_atoms, 'country', Rule).
+query(probfoil_rules:blackbox_rule(_,_,_)).
 
+% Unify the facts with the rules
+rules_and_facts:X :- magic_atoms:X; probfoil_rules:X.
+% query(rules_and_facts:_).
+
+%:- parse_clause_from_term(Rule),rules_and_facts:blackbox_rule(Target, Rule_number, Rule).
+% rules:Rule :- probfoil_rules:blackbox_rule(Target, Rule_num, Rule), parse_clause(Rule), writenl('Parsed rule: ', Rule).
+% query(rules:_).

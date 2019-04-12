@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
-from problog.logic import Term, term2list, Constant, unquote, term2str, Clause
+from problog.logic import Term, term2list, Constant, unquote, term2str, Clause, Var
 from problog.errors import UserError, InvalidValue
 
 import os
@@ -94,9 +94,13 @@ def detect_tables(scope, **kwargs):
     database = kwargs["database"]
     cell_term_list = [
         t[1]
-        for t in engine.query(database, Term("':'", scope, None), subcall=True)
-        if t[1].functor == "cell"
+        for t in engine.query(
+            database,
+            Term("':'", scope, Term("cell", Var("X"), Var("Y"), Var("Z"))),
+            subcall=True,
+        )
     ]
+
     matrix = cells_to_matrix(cell_term_list)
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
