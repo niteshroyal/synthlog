@@ -30,14 +30,14 @@ magic_atoms:Atom :-
 % query(magic_atoms:_).
 
 % Learn probfoil rules for all atoms in the scope 'magic_atoms' with 'profit' as our target predicate
-probfoil_rules:Rule :- probfoil_loop(magic_atoms, 'profit', Rule).
+probfoil_rules:Rule :- probfoil(magic_atoms, 'profit', Rule).
 probfoil_rules:Rule :- probfoil_loop(magic_atoms, 'country', Rule).
-% query(probfoil_rules:blackbox_rule(_,_,_)).
+query(probfoil_rules:blackbox_rule(_,_,_)).
 
 % Unify the facts with the rules
 rules_and_facts:X :- magic_atoms:X; probfoil_rules:X.
 % query(rules_and_facts:_).
 
 %:- parse_clause_from_term(Rule),rules_and_facts:blackbox_rule(Target, Rule_number, Rule).
-rules:Rule :- probfoil_rules:blackbox_rule(Target, Rule_num, Rule), parse_clause(Rule), writenl('Parsed rule: ', Rule).
-query(rules:_).
+% rules:Rule :- probfoil_rules:blackbox_rule(Target, Rule_num, Rule), parse_clause(Rule), writenl('Parsed rule: ', Rule).
+% query(rules:_).
