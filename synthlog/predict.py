@@ -69,10 +69,10 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
 
     clf = RandomForestClassifier()
     problog_obj = Object(clf)
-    sklearn_res = scikit_learn_predictor(
+    sklearn_res, problog_obj_back = scikit_learn_predictor(
         scope, source_columns, target_columns, problog_obj, **kwargs
     )
-    rf_term = [Term("random_forest", Object(clf))]
+    rf_term = [Term("random_forest", problog_obj_back)]
     return sklearn_res + rf_term
 
 
@@ -100,11 +100,11 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
 
     clf = DecisionTreeClassifier()
     problog_obj = Object(clf)
-    sklearn_res = scikit_learn_predictor(
+    sklearn_res, problog_obj_back = scikit_learn_predictor(
         scope, source_columns, target_columns, problog_obj, **kwargs
     )
 
-    decision_tree_term = [Term("decision_tree", problog_obj)]
+    decision_tree_term = [Term("decision_tree", problog_obj_back)]
     return sklearn_res + decision_tree_term
 
 
@@ -150,7 +150,7 @@ def scikit_learn_predictor(
             predictor_term = Term("predictor", problog_obj)
             target_terms = [Term("target", problog_obj, t) for t in target_columns]
             source_terms = [Term("source", problog_obj, s) for s in source_columns]
-            return [predictor_term] + source_terms + target_terms
+            return [predictor_term] + source_terms + target_terms, problog_obj
 
     table_cell_term_list = [
         t[1]
@@ -184,7 +184,7 @@ def scikit_learn_predictor(
     target_terms = [Term("target", problog_obj, t) for t in target_columns]
     source_terms = [Term("source", problog_obj, s) for s in source_columns]
 
-    return [predictor_term] + source_terms + target_terms
+    return [predictor_term] + source_terms + target_terms, problog_obj
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
