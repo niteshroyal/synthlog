@@ -13,7 +13,7 @@ from synthlog.probfoil.data import DataFile
 from synthlog.probfoil.score import accuracy, precision, recall
 
 
-def evaluate_probfoil_rules(hypothesis, init):
+def evaluate_probfoil_rules(hypothesis):
 
     if len(hypothesis) == 0:
         print("Length of hypothesis is 0 while calling evaluate_probfoil_rules")
@@ -35,17 +35,31 @@ def evaluate_probfoil_rules(hypothesis, init):
     result = []
     for i, rule in enumerate(rule_list):
         result.append(
-            Term("accuracy_rule", Constant(init + i), Constant(accuracy(rule)))
+            Term(
+                "accuracy_rule",
+                Constant(rule.target.functor + "_" + str(i)),
+                Constant(accuracy(rule)),
+            )
         )
         result.append(
-            Term("precision_rule", Constant(init + i), Constant(precision(rule)))
+            Term(
+                "precision_rule",
+                Constant(rule.target.functor + "_" + str(i)),
+                Constant(precision(rule)),
+            )
         )
-        result.append(Term("recall_rule", Constant(init + i), Constant(recall(rule))))
+        result.append(
+            Term(
+                "recall_rule",
+                Constant(rule.target.functor + "_" + str(i)),
+                Constant(recall(rule)),
+            )
+        )
 
     return result
 
 
-def rules2scope(hypothesis, init):
+def rules2scope(hypothesis):
     result = [Term("predictor", Constant(str(hypothesis) + "."))]
     rules = hypothesis.to_clauses(hypothesis.target.functor)
 
@@ -55,16 +69,38 @@ def rules2scope(hypothesis, init):
         rule = hypothesis
         count = 0
         for rule_str in rules[1:]:
-            result.append(Term("blackbox_rule", Constant(init + count), Object(rule)))
             result.append(
-                Term("whitebox_rule", Constant(init + count), *rule.get_literals())
+                Term(
+                    "blackbox_rule",
+                    Constant(rule.target.functor + "_" + str(count)),
+                    Object(rule),
+                )
+            )
+            result.append(
+                Term(
+                    "whitebox_rule",
+                    Constant(rule.target.functor + "_" + str(count)),
+                    *rule.get_literals()
+                )
             )
             rule = rule.previous
             count += 1
 
     else:
-        result.append(Term("blackbox_rule", Constant(init), Object(hypothesis)))
-        result.append(Term("whitebox_rule", Constant(init), *hypothesis.get_literals()))
+        result.append(
+            Term(
+                "blackbox_rule",
+                Constant(hypothesis.target.functor + "_0"),
+                Object(hypothesis),
+            )
+        )
+        result.append(
+            Term(
+                "whitebox_rule",
+                Constant(hypothesis.target.functor + "_0"),
+                *hypothesis.get_literals()
+            )
+        )
 
     return result
 
@@ -186,7 +222,7 @@ def probfoil(scope, target_predicate, **kwargs):
     hypothesis = ProbFOIL2(DataFile(PrologFile(inputFile)), beam_size=5, l=3).learn()
     os.remove(inputFile)
 
-    result = rules2scope(hypothesis, 0) + evaluate_probfoil_rules(hypothesis)
+    result = rules2scope(hypothesis) + evaluate_probfoil_rules(hypothesis)
     return result
 
 
@@ -276,9 +312,7 @@ def probfoil_loop(scope, target_predicate, **kwargs):
         if num_rules < 1:
             num_rules = 1
 
-        result += rules2scope(hypothesis, count) + evaluate_probfoil_rules(
-            hypothesis, count
-        )
+        result += rules2scope(hypothesis) + evaluate_probfoil_rules(hypothesis)
         count += num_rules
 
     return result
