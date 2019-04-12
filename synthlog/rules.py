@@ -37,21 +37,24 @@ def evaluate_probfoil_rules(hypothesis):
         result.append(
             Term(
                 "accuracy_rule",
-                Constant(rule.target.functor + "_" + str(i)),
+                Constant(rule.target.functor),
+                Constant(i),
                 Constant(accuracy(rule)),
             )
         )
         result.append(
             Term(
                 "precision_rule",
-                Constant(rule.target.functor + "_" + str(i)),
+                Constant(rule.target.functor),
+                Constant(i),
                 Constant(precision(rule)),
             )
         )
         result.append(
             Term(
                 "recall_rule",
-                Constant(rule.target.functor + "_" + str(i)),
+                Constant(rule.target.functor),
+                Constant(i),
                 Constant(recall(rule)),
             )
         )
@@ -72,14 +75,16 @@ def rules2scope(hypothesis):
             result.append(
                 Term(
                     "blackbox_rule",
-                    Constant(rule.target.functor + "_" + str(count)),
-                    Object(rule),
+                    Constant(rule.target.functor),
+                    Constant(count),
+                    Term("'" + str(rule) + ".'"),
                 )
             )
             result.append(
                 Term(
                     "whitebox_rule",
-                    Constant(rule.target.functor + "_" + str(count)),
+                    Constant(rule.target.functor),
+                    Constant(count),
                     *rule.get_literals()
                 )
             )
@@ -90,14 +95,16 @@ def rules2scope(hypothesis):
         result.append(
             Term(
                 "blackbox_rule",
-                Constant(hypothesis.target.functor + "_0"),
-                Object(hypothesis),
+                Constant(hypothesis.target.functor),
+                Constant(0),
+                Term("'" + str(hypothesis) + ".'"),
             )
         )
         result.append(
             Term(
                 "whitebox_rule",
-                Constant(hypothesis.target.functor + "_0"),
+                Constant(hypothesis.target.functor),
+                Constant(0),
                 *hypothesis.get_literals()
             )
         )
@@ -288,7 +295,6 @@ def probfoil_loop(scope, target_predicate, **kwargs):
 
     result = []
 
-    count = 0
     for target_constant in target_facts.keys():
         pos_examples = target_facts[target_constant]
         neg_examples = []
@@ -308,11 +314,6 @@ def probfoil_loop(scope, target_predicate, **kwargs):
         hypothesis = ProbFOIL2(DataFile(PrologFile(file)), beam_size=10, l=4).learn()
         os.remove(file)
 
-        num_rules = len(hypothesis.to_clauses(hypothesis.target.functor)) - 1
-        if num_rules < 1:
-            num_rules = 1
-
         result += rules2scope(hypothesis) + evaluate_probfoil_rules(hypothesis)
-        count += num_rules
 
     return result
