@@ -64,12 +64,6 @@ class MERCS(object):
 
         return
 
-    def __eq__(self, other):
-        return True
-
-    def __str__(self):
-        return "MERCS"
-
     def fit(self, X, **kwargs):
         """
         Fit the MERCS model to a dataset X.
