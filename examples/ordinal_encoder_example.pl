@@ -25,8 +25,14 @@ magic_tables(test):X :- detect_tables(magic_cells(test), X).
 magic_cells(test, transformed_column):X :- magic_transforms:transformer(T), transform(magic_tables(test), T, [column('T1', 0)], X).
 
 % We recreate a full table
-magic_cells(test, transformed_column):table_cell('T1', X, Y,V) :- magic_cells(test, transformed_column):cell_transform(X,Y,V,_), magic_tables(test):table('T1', XOffset, YOffset, _, _), NewX is X + XOffset-1, NewY is Y + YOffset-1.
+magic_cells(test, transformed_column):table_cell('T1', X, Y,V) :- magic_cells(test, transformed_column):cell_transform(X,Y,V,_).
 magic_cells(test, transformed_column):table_cell('T1', X, Y,V) :- magic_tables(test):table_cell('T1',X,Y,V), \+ magic_cells(test, transformed_column):cell_transform(X,Y,V2,_).
 
-
+%In the test table, we get no String in column 0, only their number representation
 query(magic_cells(test, transformed_column):table_cell(_, _, _, _)).
+
+% We recreate a full table
+magic_cells(test, original_column):X :- magic_transforms:transformer(T), inverse_transform(magic_cells(test, transformed_column), T, [column('T1', 0)], X).
+magic_cells(test, original_column):table_cell('T1', X, Y,V) :- magic_cells(test, original_column):cell_transform(X,Y,V,_).
+magic_cells(test, original_column):table_cell('T1', X, Y,V) :- magic_tables(test):table_cell('T1',X,Y,V), \+ magic_cells(test, original_column):cell_transform(X,Y,V2,_).
+query(magic_cells(test, original_column):table_cell(_,_,_,_)).
