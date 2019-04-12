@@ -117,10 +117,12 @@ def scikit_learn_predictor(
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
     :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
-    :return: A list of Terms.
-    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    :return: A tuple: list of Terms, classifier_object
+    List of Terms is:
+        predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
+        target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+        source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    classifier_object is the classifier, as a Problog object
     """
     engine = kwargs["engine"]
     database = kwargs["database"]
