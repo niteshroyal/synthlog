@@ -30,6 +30,7 @@ magic_atoms:X :-
 %query(magic_atoms:_).
 
 % Learn probfoil rules for all atoms in the scope 'magic_atoms' with 'profit' as our target predicate
-%probfoil_rules:X :- probfoil(magic_atoms, 'profit', X).
+probfoil_rules:X :- probfoil(magic_atoms, 'profit', X).
 probfoil_rules:X :- probfoil_loop(magic_atoms, 'country', X).
-query(probfoil_rules:_).
+query(probfoil_rules:predictor(_)).
+

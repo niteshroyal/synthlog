@@ -44,13 +44,21 @@ def ordinal_encoder(scope, source_columns, **kwargs):
     ordinal_encoder(<transformer>) is created, with <transformer> the scikit-learn transformer object.
     source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     """
+
+    def short_str(_self):
+        return "OE({})".format(id(_self))
+
+    OrdinalEncoder.__repr__ = short_str
+    OrdinalEncoder.__str__ = short_str
+
     transformer = OrdinalEncoder()
-    sklearn_res = scikit_learn_transformer(scope, source_columns, transformer, **kwargs)
-    ordinal_encoder_term = Term("ordinal_encoder", Object(transformer))
+    problog_obj = Object(transformer)
+    sklearn_res = scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs)
+    ordinal_encoder_term = Term("ordinal_encoder", problog_obj)
     return sklearn_res + [ordinal_encoder_term]
 
 
-def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
+def scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs):
     """
     Fit scikit learn transformer on scope. It uses source_columns to learn the transformation
     :param scope: A scope, containing table_cell predicates describing a table content.
@@ -63,6 +71,27 @@ def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
     """
     engine = kwargs["engine"]
     database = kwargs["database"]
+
+    transformer = problog_obj.functor
+
+    # We try to retrieve the model trained with the same parameters
+    res_predictor_object = [
+        t
+        for t in engine.query(
+            database, Term("transformer_object", None, None, None), subcall=True
+        )
+    ]
+
+    # If we succeed, we retrieve the previously trained object.
+    # If not, we train a new one
+    for r in res_predictor_object:
+        if term2str(scope) == r[0].functor and r[1].functor == source_columns:
+            problog_obj = r[2]
+            source_columns = r[1].functor
+
+            transformer_term = Term("transformer", problog_obj)
+            source_terms = [Term("source", problog_obj, s) for s in source_columns]
+            return [transformer_term] + source_terms
 
     table_cell_term_list = [
         t[1]
@@ -80,12 +109,15 @@ def scikit_learn_transformer(scope, source_columns, transformer, **kwargs):
 
     transformer.fit(matrix[:, src_cols])
 
-    transformer_term = Term("transformer", Object(transformer))
-    col_transformation_terms = [
-        Term("source", Object(transformer), s) for s in source_columns
-    ]
+    # We add the new predictor in the database to be able to retrieve it in future calls
+    database.add_fact(
+        Term("transformer_object", scope, Object(source_columns), problog_obj)
+    )
 
-    return [transformer_term] + col_transformation_terms
+    transformer_term = Term("transformer", problog_obj)
+    source_terms = [Term("source", problog_obj, s) for s in source_columns]
+
+    return [transformer_term] + source_terms
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
@@ -104,8 +136,55 @@ def transform(scope, transformer, source_columns, **kwargs):
     transformer(<transformation_term>, <transformer>) is created. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <transformer> is the transformer parameter, as a Problog object
     source(<transformation_term>, <source_column>) are created for each source_column. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <source_column> is column(<table_name>, <col_number>)
     """
+    return transformation(
+        scope, transformer, source_columns, transformer.functor.transform, **kwargs
+    )
+
+
+@problog_export_nondet("+term", "+term", "+list", "-term")
+def inverse_transform(scope, transformer, source_columns, **kwargs):
+    """
+    Transform values using a transformer that was fitted on data. It uses source_columns of scope to transform the data
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param transformer: A scikit-learn transformer, stored as a Problog Object (accessible through transformer(<transformer>) of the ordinal_encoder function for example).
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the transformer.
+    :param kwargs:
+    :return: Transformations from transformer using source_columns of scope, as well as transformation metadata.
+    transformation(<scope>, <transformer>, <source_columns>) is created. <scope> is the scope parameter, as a Problog object, <transformer> is the transformer parameter, as a Problog object and <source_columns> are the source_columns parameter as a Problog object.
+        This whole transformation/3 is used as a key for the transformation object. In the future, it might be better to use a unique identifier or something else!
+    cell_transform(<row_id>, <col_id>, <value>, <transformation_term>) are created for each transformation. <row_id> and <col_id> are (1,1) indexed, NOT indexed from the table_cell row and column ids.
+        The <col_id> corresponds to the index of the target column of transformer. <value> is the transformed value. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above.
+    transformer(<transformation_term>, <transformer>) is created. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <transformer> is the transformer parameter, as a Problog object
+    source(<transformation_term>, <source_column>) are created for each source_column. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <source_column> is column(<table_name>, <col_number>)
+    """
+    return transformation(
+        scope,
+        transformer,
+        source_columns,
+        transformer.functor.inverse_transform,
+        **kwargs
+    )
+
+
+@problog_export_nondet("+term", "+term", "+list", "-term")
+def transformation(scope, transformer, source_columns, function, **kwargs):
+    """
+    Transform values using a transformer that was fitted on data. It uses source_columns of scope to transform the data
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param transformer: A scikit-learn transformer, stored as a Problog Object (accessible through transformer(<transformer>) of the ordinal_encoder function for example).
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the transformer.
+    :param function: The function to use for the transformation (either transform or inverse transform)
+    :param kwargs:
+    :return: Transformations from transformer using source_columns of scope, as well as transformation metadata.
+    transformation(<scope>, <transformer>, <source_columns>) is created. <scope> is the scope parameter, as a Problog object, <transformer> is the transformer parameter, as a Problog object and <source_columns> are the source_columns parameter as a Problog object.
+        This whole transformation/3 is used as a key for the transformation object. In the future, it might be better to use a unique identifier or something else!
+    cell_transform(<row_id>, <col_id>, <value>, <transformation_term>) are created for each transformation. <row_id> and <col_id> are (1,1) indexed, NOT indexed from the table_cell row and column ids.
+        The <col_id> corresponds to the index of the target column of transformer. <value> is the transformed value. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above.
+    transformer(<transformation_term>, <transformer>) is created. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <transformer> is the transformer parameter, as a Problog object
+    source(<transformation_term>, <source_column>) are created for each source_column. <transformation_term> is whole transformation(<scope>, <transformer>, <source_columns>) defined above, <source_column> is column(<table_name>, <col_number>)
+    """
     transformation_term_3 = Term(
-        "transformation", Object(scope), Object(transformer), Object(source_columns)
+        "transformation", Object(scope), transformer, Object(source_columns)
     )
 
     transformation_term_1 = Term("transformation", transformation_term_3)
@@ -126,8 +205,7 @@ def transform(scope, transformer, source_columns, **kwargs):
 
     src_cols = [s.args[1].value for s in source_columns]
 
-    transfomer_instance = transformer.functor
-    y_transform = transfomer_instance.transform(matrix[:, src_cols])
+    y_transform = function(matrix[:, src_cols])
 
     if len(y_transform.shape) == 1:
         y_transform = np.atleast_2d(y_transform).T
@@ -140,7 +218,7 @@ def transform(scope, transformer, source_columns, **kwargs):
             init_cell_transform(r + 1, c + 1, y_transform[r, c], transformation_term_3)
         )
 
-    transformer_term = [Term("transformer", transformation_term_3, Object(transformer))]
+    transformer_term = [Term("transformer", transformation_term_3, transformer)]
     source_terms = [Term("source", transformation_term_3, s) for s in source_columns]
 
     return (
