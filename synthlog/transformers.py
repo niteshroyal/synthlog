@@ -53,8 +53,10 @@ def ordinal_encoder(scope, source_columns, **kwargs):
 
     transformer = OrdinalEncoder()
     problog_obj = Object(transformer)
-    sklearn_res = scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs)
-    ordinal_encoder_term = Term("ordinal_encoder", problog_obj)
+    sklearn_res, problog_obj_back = scikit_learn_transformer(
+        scope, source_columns, problog_obj, **kwargs
+    )
+    ordinal_encoder_term = Term("ordinal_encoder", problog_obj_back)
     return sklearn_res + [ordinal_encoder_term]
 
 
@@ -65,9 +67,11 @@ def scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs):
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
     :param transformer: The transformer to use
     :param kwargs:
-    :return: A list of Terms.
-    transformer(<transformer>) is created, with <transformer> the scikit-learn transformer object.
-    source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    :return: A tuple list of Terms, problog_object.
+    List of Terms is
+        transformer(<transformer>) is created, with <transformer> the scikit-learn transformer object.
+        source(<transformer>, <column>) are created for each source column. <transformer> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    problog_object is the transformation object, as a problog object
     """
     engine = kwargs["engine"]
     database = kwargs["database"]
@@ -117,7 +121,7 @@ def scikit_learn_transformer(scope, source_columns, problog_obj, **kwargs):
     transformer_term = Term("transformer", problog_obj)
     source_terms = [Term("source", problog_obj, s) for s in source_columns]
 
-    return [transformer_term] + source_terms
+    return [transformer_term] + source_terms, problog_obj
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
