@@ -2,7 +2,16 @@ from __future__ import print_function
 
 from problog.extern import problog_export, problog_export_nondet, problog_export_raw
 
-from problog.logic import Term, term2list, Constant, unquote, term2str, Clause, Var
+from problog.logic import (
+    Term,
+    term2list,
+    Constant,
+    unquote,
+    term2str,
+    Clause,
+    Var,
+    list2term,
+)
 from problog.errors import UserError, InvalidValue
 
 import os
@@ -106,9 +115,12 @@ def detect_tables(scope, **kwargs):
         for j in range(matrix.shape[1]):
             if matrix[i, j] is None:
                 matrix[i, j] = ""
+
     tables = tables_from_cells(matrix, Orientation.vertical)
+
     result = []
     for table in tables:
+
         result.append(
             init_table(
                 table.name,
@@ -119,17 +131,47 @@ def detect_tables(scope, **kwargs):
             )
         )
 
+        table_header_type = []
+        table_header_unique_values = []
         for j in range(table.range.width):
-            result.append(
-                init_table_header(table.name, j + 1, matrix[table.range.row - 1, j])
-            )
+            table_header_type.append("int")
+            table_header_unique_values.append(set())
+
             for i in range(table.range.height):
                 result.append(
                     init_table_cell(table.name, i + 1, j + 1, table.data[i, j])
                 )
+
                 result.append(
                     init_table_cell_type(
                         table.name, i + 1, j + 1, table.type_data[i, j]
+                    )
+                )
+
+                if table.type_data[i, j] == "string":
+                    table_header_type[j] = "string"
+
+                table_header_unique_values[j].add(table.data[i, j])
+
+        for j in range(table.range.width):
+            if table_header_type[j] == "string":
+                result.append(
+                    init_table_header(
+                        table.name,
+                        j + 1,
+                        matrix[table.range.row - 1, j],
+                        "string",
+                        list(table_header_unique_values[j]),
+                    )
+                )
+            else:
+                result.append(
+                    init_table_header(
+                        table.name,
+                        j + 1,
+                        matrix[table.range.row - 1, j],
+                        table_header_type[j],
+                        list(table_header_unique_values[j]),
                     )
                 )
     return result
@@ -153,21 +195,38 @@ def translate_constraint(constraint: Constraint):
         )
 
 
-@problog_export_nondet("+term", "+term", "+term", "+term", "+term", "-term")
-def matrix_to_atoms(table_name, header, cell_row, cell_type, cell_value, **kwargs):
+@problog_export_nondet("+term", "+term", "+term", "+term", "+term", "+term", "-term")
+def cell_to_atoms(
+    table_name,
+    header,
+    cell_row,
+    column_type,
+    column_unique_values,
+    cell_value,
+    **kwargs
+):
     table_name = unquote(str(table_name)).lower()
     header = unquote(str(header)).lower()
     cell_row = unquote(str(cell_row)).lower()
-    cell_type = unquote(str(cell_type)).lower()
+    column_type = unquote(str(column_type)).lower()
     cell_value = unquote(str(cell_value)).lower()
+    column_unique_values1 = term2list(column_unique_values)
+    # print(column_unique_values1)
 
     row_id = table_name + "_r" + cell_row
 
+    # result = [Term(header, Constant(row_id), Constant(cell_value))]
     result = []
-    result.append(Term(header, Constant(row_id), Constant(cell_value)))
-    if cell_type == "string":
-        result.append(Term(header + "_" + cell_value, Constant(row_id)))
-
+    if column_type == "string":
+        for unique_value in column_unique_values1:
+            if unquote(unique_value) == cell_value:
+                # result.append(Term(header + "_" + cell_value, Constant(row_id)))
+                r = 0
+            else:
+                # WIth Probability 0
+                result.append(
+                    Term(header + "_" + cell_value, Constant(row_id), p=Constant(0.0))
+                )
     return result
 
 

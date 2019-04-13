@@ -4,7 +4,9 @@ magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 % query(magic_cells:_).
 
 magic_tables:X :- detect_tables(magic_cells, X).
-% query(magic_tables:table(_,_,_,_,_)).
+%query(magic_tables:table(_,_,_,_,_)).
+%query(magic_tables:table_header(_,_,_,_,_)).
+
 %query(magic_tables:_).
 
 
@@ -15,18 +17,23 @@ magic_tables:X :- detect_tables(magic_cells, X).
 
 
 % Stitch cell_types to table_atoms(<table_name>, <cell_header>, <cell_row>, <cell_value>, <cell_type>)
-magic_tables:table_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_value) :-
+magic_tables:table_atoms(Table_name, Cell_header, Cell_row, Column_type, Column_unique_values, Cell_value) :-
     magic_tables:table(Table_name, Start_row, Start_col, Height, Width),
-    magic_tables:table_header(Table_name, Cell_column, Cell_header),
+    magic_tables:table_header(Table_name, Cell_column, Cell_header, Column_type, Column_unique_values),
     magic_tables:table_cell(Table_name, Cell_row, Cell_column, Cell_value),
     magic_tables:table_cell_type(Table_name, Cell_row, Cell_column, Cell_type).
-% query(magic_tables:table_atoms(_,_,_,_,_)).
+% query(magic_tables:table_atoms(_,_,_,_,_,_)).
 
 % Convert the matrix of cells to atoms
 magic_atoms:Atom :-
-    magic_tables:table_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_value),
-    matrix_to_atoms(Table_name, Cell_header, Cell_row, Cell_type, Cell_value, Atom).
-% query(magic_atoms:_).
+    magic_tables:table_atoms(Table_name, Cell_header, Cell_row, Column_type, Column_unique_values, Cell_value),
+    cell_to_atoms(Table_name, Cell_header, Cell_row, Column_type, Column_unique_values, Cell_value, Atom).
+%query(magic_atoms:_).
+
+%P::magic_atoms1:X :- subquery(magic_atoms:X, P, []).
+%P::magic_atoms1:X :- magic_atoms:P::X.
+magic_atoms1:X :- magic_atoms:X, X =.. ['profit_yes'|_].
+query(magic_atoms1:_).
 
 % Learn probfoil rules for all atoms in the scope 'magic_atoms' with 'profit' as our target predicate
 probfoil_rules:Rule :- probfoil(magic_atoms, 'profit', Rule).
@@ -66,11 +73,6 @@ atoms_without_profit:X :-
 
 atoms_with_rules:X :- atoms_without_profit:X; rules:X.
 
-
-0::atoms_with_rules:type_speculaas(1).
-0::atoms_with_rules:country_de(1).
-0::atoms_with_rules:country_nl(1).
-
 atoms_with_rules:profit(A) :-
     atoms_with_rules:type_speculaas(A),
     \+atoms_with_rules:country_de(A),
@@ -79,5 +81,5 @@ atoms_with_rules:profit(A) :-
 P::profit(X) :- subquery(atoms_with_rules:profit(X), P, []), writenl('Probability of ', X, ':', P).
 %query(atoms_with_rules:_).
 %query(atoms_with_rules:profit(_)).
-query(profit(_)).
+%query(profit(_)).
 

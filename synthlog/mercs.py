@@ -56,17 +56,18 @@ def mercs(scope, source_columns, **kwargs):
 
     # If found, return the existing object. If not, create a predictor.
     for r in res_predictor_object:
-        if (
-            term2str(scope) == r[0].functor
-            and r[1].functor == source_columns
-        ):
+        if term2str(scope) == r[0].functor and r[1].functor == source_columns:
             mercs_problog_object = r[2]
             source_columns = r[1].functor
 
             predictor_term = Term("predictor", mercs_problog_object)
             mercs_term = Term("mercs", mercs_problog_object)
-            target_terms = [Term("target", mercs_problog_object, t) for t in source_columns]
-            source_terms = [Term("source", mercs_problog_object, s) for s in source_columns]
+            target_terms = [
+                Term("target", mercs_problog_object, t) for t in source_columns
+            ]
+            source_terms = [
+                Term("source", mercs_problog_object, s) for s in source_columns
+            ]
             return [predictor_term] + [mercs_term] + source_terms + target_terms
 
     # Getting input data
@@ -95,12 +96,7 @@ def mercs(scope, source_columns, **kwargs):
 
     # We add the new predictor in the database to be able to retrieve it in future calls
     database.add_fact(
-        Term(
-            "predictor_object",
-            scope,
-            Object(source_columns),
-            mercs_problog_object,
-        )
+        Term("predictor_object", scope, Object(source_columns), mercs_problog_object)
     )
 
     predictor_term = Term("predictor", mercs_problog_object)
@@ -127,13 +123,15 @@ def mercs(scope, source_columns, **kwargs):
         dt_predictor_term = Term("predictor", dt_problog_object)
         decision_tree_term = Term("decision_tree", dt_problog_object)
 
-        dt_source_columns = [x for i, x in enumerate(source_columns)
-                             if dt_code[i] == 0]
-        dt_target_columns = [x for i, x in enumerate(source_columns)
-                             if dt_code[i] == 1]
+        dt_source_columns = [x for i, x in enumerate(source_columns) if dt_code[i] == 0]
+        dt_target_columns = [x for i, x in enumerate(source_columns) if dt_code[i] == 1]
 
-        dt_target_terms = [Term("target", dt_problog_object, t) for t in dt_target_columns]
-        dt_source_terms = [Term("source", dt_problog_object, s) for s in dt_source_columns]
+        dt_target_terms = [
+            Term("target", dt_problog_object, t) for t in dt_target_columns
+        ]
+        dt_source_terms = [
+            Term("source", dt_problog_object, s) for s in dt_source_columns
+        ]
 
         dt_terms.append(dt_predictor_term)
         dt_terms.append(decision_tree_term)
