@@ -1,79 +1,219 @@
 from __future__ import print_function
 
-from problog.extern import (
-    problog_export,
-    problog_export_class,
-    problog_export_raw,
-    problog_export_nondet,
-)
+from problog.extern import problog_export_nondet
 
 from itertools import product
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
 
 import importlib
-import sys
-import ast
 
 import numpy as np
 
+from problog.util import init_logger
 from synthlog.keywords import init_cell_pred
-from problog import engine
-from problog.errors import UserError
-from problog.logic import (
-    Term,
-    Object,
-    term2list,
-    Constant,
-    is_list,
-    term2str,
-    Var,
-    unquote,
-)
-from problog.engine_unify import unify_value, UnifyError
+
+from problog.logic import Term, Object, term2str, unquote
+
+logger = init_logger()
 
 
-@problog_export("+term", "+term")
-def comparison(column1, column2):
-    print("Term: " + str(column1))
-    print("Term: " + str(column2))
-    print("Functor: " + str(column1.functor))
-    print("Functor: " + str(column2.functor))
-    print(column1.args[0])
-    print(column2.args[0])
-    return ()
+class Predictor:
+    def __init__(
+        self,
+        scope=None,
+        source_columns=None,
+        target_columns=None,
+        database=None,
+        engine=None,
+    ):
+        self.scope = scope
+        self.source_columns = source_columns
+        self.target_columns = target_columns
+
+        self.database = database
+        self.engine = engine
+
+        self.query_term = Term("predictor_object", None, None, None, None)
+
+        query_obj = self.get_object_from_db()
+        if query_obj:
+            self.problog_obj = query_obj
+            self.object_from_db = True
+        else:
+            self.problog_obj = Object(self)
+            self.object_from_db = False
+
+    def get_db_result(self):
+        if not self.database or not self.engine:
+            logger.warning(
+                "Could not try to retrieve predictor from db. database and engine should be filled."
+            )
+            return None
+
+        # We try to retrieve the model trained with the same parameters
+        res_predictor_object = [
+            t for t in self.engine.query(self.database, self.query_term, subcall=True)
+        ]
+
+        # If we succeed, we retrieve the previously trained object.
+        # If not, we train a new one
+        for r in res_predictor_object:
+            if self.match_query_res(r):
+                return r
+
+    def match_query_res(self, r):
+        return (
+            r[0].functor == term2str(self.scope)
+            and r[1].functor == self.source_columns
+            and r[2].functor == self.target_columns
+        )
+
+    def get_object_from_db(self):
+        res = self.get_db_result()
+        return res[3] if res else None
+
+    def to_term(self):
+        return Term(
+            "predictor_object",
+            self.scope,
+            Object(self.source_columns),
+            Object(self.target_columns),
+            self.problog_obj,
+        )
+
+    def fit(self):
+        raise NotImplementedError
+
+    def output_terms(self):
+        predictor_term = Term("predictor", self.problog_obj)
+        target_terms = [
+            Term("target", self.problog_obj, t) for t in self.target_columns
+        ]
+        source_terms = [
+            Term("source", self.problog_obj, s) for s in self.source_columns
+        ]
+        return [predictor_term] + source_terms + target_terms
+
+    def __repr__(self):
+        return "Predictor({})".format(id(self))
+
+    def __str__(self):
+        return "Predictor({})".format(id(self))
 
 
-@problog_export_nondet("+term", "+list", "+list", "-term")
-def random_forest(scope, source_columns, target_columns, **kwargs):
-    """
-    Learn a random forest predictor on scope. It uses source_columns to predict target_columns
-    :param scope: A scope, containing table_cell predicates describing a table content.
-    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
-        Source column should have numeric values.
-    :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
-    :param kwargs:
-    :return: A list of Terms.
-    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-    random_forest(<predictor> is created, with <predictor> the scikit-learn predictor object.
-    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    """
+class SKLearnPredictor(Predictor):
+    def __init__(
+        self,
+        modelname,
+        scope,
+        source_columns,
+        target_columns,
+        database=None,
+        engine=None,
+        parameters=None,
+    ):
+        super().__init__(
+            scope=scope,
+            source_columns=source_columns,
+            target_columns=target_columns,
+            database=database,
+            engine=engine,
+        )
+        if parameters is None:
+            parameters = {}
+        self.modelname = "sklearn.%s" % unquote(modelname)
+        self.parameters = parameters
 
-    def short_str(_self):
-        return "RF({})".format(id(_self))
+        modulename, classname = self.modelname.rsplit(".", 1)
+        modelclass = getattr(importlib.import_module(modulename), classname)
+        self.model = modelclass(**self.parameters)
 
-    RandomForestClassifier.__repr__ = short_str
-    RandomForestClassifier.__str__ = short_str
+    def fit(self):
+        """
+        Learn scikit learn predictor clf on scope. It uses source_columns to predict target_columns
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param kwargs:
+        :return: A tuple: list of Terms, classifier_object
+        List of Terms is:
+            predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
+            target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+            source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+        classifier_object is the classifier, as a Problog object
+        """
+        # If the object was not retrieved from db, we train the model
+        if not self.object_from_db:
+            table_cell_term_list = [
+                t[1]
+                for t in self.engine.query(
+                    self.database, Term("':'", self.scope, None), subcall=True
+                )
+                if t[1].functor == "table_cell"
+            ]
 
-    clf = RandomForestClassifier()
-    problog_obj = Object(clf)
-    sklearn_res, problog_obj_back = scikit_learn_predictor(
-        scope, source_columns, target_columns, problog_obj, **kwargs
+            relevant_table = [
+                t
+                for t in table_cell_term_list
+                if t.args[0] == self.target_columns[0].args[0]
+            ]
+
+            matrix = cells_to_matrix(relevant_table)
+
+            src_cols = [s.args[1].value for s in self.source_columns]
+            tgt_cols = [s.args[1].value for s in self.target_columns]
+
+            self.model.fit(matrix[:, src_cols], matrix[:, tgt_cols])
+
+            # We add the new predictor in the database to be able to retrieve it in future calls
+            self.database.add_fact(self.to_term())
+
+    def output_terms(self):
+        super_terms = super().output_terms()
+        return super_terms + [Term("sklearn_predictor", self.problog_obj)]
+
+
+@problog_export_nondet("+term", "+term", "+list", "+list", "-term")
+def sklearn_predictor(scope, predictor_name, source_columns, target_columns, **kwargs):
+    clf = SKLearnPredictor(
+        predictor_name,
+        scope,
+        source_columns,
+        target_columns,
+        database=kwargs["database"],
+        engine=kwargs["engine"],
     )
-    rf_term = [Term("random_forest", problog_obj_back)]
-    return sklearn_res + rf_term
+    clf.fit()
+    return clf.output_terms()
+
+
+class DecisionTree(SKLearnPredictor):
+    def __init__(
+        self,
+        scope,
+        source_columns,
+        target_columns,
+        database=None,
+        engine=None,
+        parameters=None,
+    ):
+        super().__init__(
+            "tree.DecisionTreeClassifier",
+            scope,
+            source_columns,
+            target_columns,
+            database=database,
+            engine=engine,
+            parameters=parameters,
+        )
+
+    def output_terms(self):
+        return super().output_terms() + [Term("decision_tree", self.problog_obj)]
+
+    def __str__(self):
+        return "DT({})".format(id(self))
+
+    def __repr__(self):
+        return "DT({})".format(id(self))
 
 
 @problog_export_nondet("+term", "+list", "+list", "-term")
@@ -91,102 +231,71 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     """
-
-    def short_str(_self):
-        return "DT({})".format(id(_self))
-
-    DecisionTreeClassifier.__repr__ = short_str
-    DecisionTreeClassifier.__str__ = short_str
-
-    clf = DecisionTreeClassifier()
-    problog_obj = Object(clf)
-    sklearn_res, problog_obj_back = scikit_learn_predictor(
-        scope, source_columns, target_columns, problog_obj, **kwargs
+    clf = DecisionTree(
+        scope,
+        source_columns,
+        target_columns,
+        database=kwargs["database"],
+        engine=kwargs["engine"],
     )
+    clf.fit()
+    return clf.output_terms()
 
-    decision_tree_term = [Term("decision_tree", problog_obj_back)]
-    return sklearn_res + decision_tree_term
+
+class RandomForest(SKLearnPredictor):
+    def __init__(
+        self,
+        scope,
+        source_columns,
+        target_columns,
+        database=None,
+        engine=None,
+        parameters=None,
+    ):
+        super().__init__(
+            "ensemble.RandomForestClassifier",
+            scope,
+            source_columns,
+            target_columns,
+            database=database,
+            engine=engine,
+            parameters=parameters,
+        )
+
+    def output_terms(self):
+        return super().output_terms() + [Term("random_forest", self.problog_obj)]
+
+    def __str__(self):
+        return "RF({})".format(id(self))
+
+    def __repr__(self):
+        return "RF({})".format(id(self))
 
 
-def scikit_learn_predictor(
-    scope, source_columns, target_columns, problog_obj, **kwargs
-):
+@problog_export_nondet("+term", "+list", "+list", "-term")
+def random_forest(scope, source_columns, target_columns, **kwargs):
     """
-    Learn scikit learn predictor clf on scope. It uses source_columns to predict target_columns
+    Learn a random forest predictor on scope. It uses source_columns to predict target_columns
     :param scope: A scope, containing table_cell predicates describing a table content.
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        Source column should have numeric values.
     :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
-    :return: A tuple: list of Terms, classifier_object
-    List of Terms is:
-        predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-        target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-        source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    classifier_object is the classifier, as a Problog object
+    :return: A list of Terms.
+    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
+    random_forest(<predictor> is created, with <predictor> the scikit-learn predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
     """
-    engine = kwargs["engine"]
-    database = kwargs["database"]
-
-    clf = problog_obj.functor
-
-    # We try to retrieve the model trained with the same parameters
-    res_predictor_object = [
-        t
-        for t in engine.query(
-            database, Term("predictor_object", None, None, None, None), subcall=True
-        )
-    ]
-
-    # If we succeed, we retrieve the previously trained object.
-    # If not, we train a new one
-    for r in res_predictor_object:
-        if (
-            term2str(scope) == r[0].functor
-            and r[1].functor == source_columns
-            and r[2].functor == target_columns
-        ):
-            problog_obj = r[3]
-            source_columns = r[1].functor
-            target_columns = r[2].functor
-
-            predictor_term = Term("predictor", problog_obj)
-            target_terms = [Term("target", problog_obj, t) for t in target_columns]
-            source_terms = [Term("source", problog_obj, s) for s in source_columns]
-            return [predictor_term] + source_terms + target_terms, problog_obj
-
-    table_cell_term_list = [
-        t[1]
-        for t in engine.query(database, Term("':'", scope, None), subcall=True)
-        if t[1].functor == "table_cell"
-    ]
-
-    relevant_table = [
-        t for t in table_cell_term_list if t.args[0] == target_columns[0].args[0]
-    ]
-
-    matrix = cells_to_matrix(relevant_table)
-
-    src_cols = [s.args[1].value for s in source_columns]
-    tgt_cols = [s.args[1].value for s in target_columns]
-
-    clf.fit(matrix[:, src_cols], matrix[:, tgt_cols])
-
-    # We add the new predictor in the database to be able to retrieve it in future calls
-    database.add_fact(
-        Term(
-            "predictor_object",
-            scope,
-            Object(source_columns),
-            Object(target_columns),
-            problog_obj,
-        )
+    clf = RandomForest(
+        scope,
+        source_columns,
+        target_columns,
+        database=kwargs["database"],
+        engine=kwargs["engine"],
     )
-
-    predictor_term = Term("predictor", problog_obj)
-    target_terms = [Term("target", problog_obj, t) for t in target_columns]
-    source_terms = [Term("source", problog_obj, s) for s in source_columns]
-
-    return [predictor_term] + source_terms + target_terms, problog_obj
+    clf.fit()
+    return clf.output_terms()
 
 
 @problog_export_nondet("+term", "+term", "+list", "-term")
@@ -227,7 +336,7 @@ def predict(scope, predictor, source_columns, **kwargs):
 
     src_cols = [s.args[1].value for s in source_columns]
 
-    clf = predictor.functor
+    clf = predictor.functor.model
     y_pred = clf.predict(matrix[:, src_cols])
 
     if len(y_pred.shape) == 1:

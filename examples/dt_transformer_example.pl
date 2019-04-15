@@ -42,6 +42,6 @@ magic_predict:X :- magic_models:predictor(Y), predict(magic_cells(test, transfor
 %query(magic_predict:X).
 
 % We recreate a full table
-magic_cells(final):table_cell('T1', A,B,C) :- magic_predict:cell_pred(A,B,C,_).
-magic_cells(final):table_cell(T,A,B,V1) :- magic_tables(test):table_cell(T,A, B,V1), \+ magic_predict:cell_pred(A,B,V2,_).
+magic_cells(final):table_cell('T1', A,8,C) :- magic_predict:cell_pred(A,B,C,_).
+magic_cells(final):table_cell(T,A,B,V1) :- magic_tables(test):table_cell(T,A, B,V1).%, \+ magic_predict:cell_pred(A,B,V2,_).
 query(magic_cells(final):_).
