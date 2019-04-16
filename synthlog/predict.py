@@ -14,6 +14,20 @@ logger = init_logger()
 
 @problog_export_nondet("+term", "+term", "+list", "+list", "-term")
 def sklearn_predictor(scope, predictor_name, source_columns, target_columns, **kwargs):
+    """
+    Learn a scikit-learn predictor on scope. It uses source_columns to predict target_columns
+    :param predictor_name: Name of the sklearn predictor to use. For example, "tree.DecisionTreeClassifier" is the name of a decision tree in sklearn.
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        Source column should have numeric values.
+    :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+    :param kwargs:
+    :return: A list of Terms.
+    predictor(<predictor>) is created, with <predictor> the predictor object.
+    decision_tree(<predictor> is created, with <predictor> the predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
+    """
     clf = SKLearnPredictor(
         predictor_name,
         scope,
@@ -36,10 +50,10 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
     :return: A list of Terms.
-    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-    decision_tree(<predictor> is created, with <predictor> the scikit-learn predictor object.
-    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    predictor(<predictor>) is created, with <predictor> the predictor object.
+    decision_tree(<predictor> is created, with <predictor> the predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
     """
     clf = DecisionTree(
         scope,
@@ -62,10 +76,10 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
     :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
     :return: A list of Terms.
-    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-    random_forest(<predictor> is created, with <predictor> the scikit-learn predictor object.
-    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    predictor(<predictor>) is created, with <predictor> the predictor object.
+    random_forest(<predictor> is created, with <predictor> the predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
     """
     clf = RandomForest(
         scope,
@@ -81,19 +95,40 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
 @problog_export_nondet("+term", "+list", "-term")
 def mercs(scope, source_columns, **kwargs):
     """
-    Learn a random forest predictor on scope. It uses source_columns to predict target_columns
+    Learn a MERCS predictor on scope. It uses source_columns to predict any source_columns
     :param scope: A scope, containing table_cell predicates describing a table content.
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
         Source column should have numeric values.
-    :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
     :param kwargs:
     :return: A list of Terms.
-    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-    mercs(<predictor> is created, with <predictor> the scikit-learn predictor object.
-    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    predictor(<predictor>) is created, with <predictor> the MERCS predictor object.
+    mercs(<predictor> is created, with <predictor> the MERCS predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the MERCS predictor object and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the MERCS predictor object and <column> is column(<table_name>, <col_number>)
     """
     clf = MERCSPredictor(
+        scope, source_columns, database=kwargs["database"], engine=kwargs["engine"]
+    )
+    clf.fit()
+    return clf.output_terms()
+
+
+@problog_export_nondet("+term", "+list", "-term")
+def white_mercs(scope, source_columns, **kwargs):
+    """
+    Learn a MERCS predictor on scope. It exposes its internal trees. It uses source_columns to predict any source_columns
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        Source column should have numeric values.
+    :param kwargs:
+    :return: A list of Terms.
+    decision_tree(<predictor>), with <predictor> the decision tree predictor internal to MERCS.
+    predictor(<predictor>) is created, with <predictor> the predictor (MERCS or internal decision tree) object.
+    mercs(<predictor> is created, with <predictor> the MERCS predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the predictor object (MERCS or internal decision tree) and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the predictor object (MERCS or internal decision tree) and <column> is column(<table_name>, <col_number>)
+    """
+    clf = MERCSWhiteBoxPredictor(
         scope, source_columns, database=kwargs["database"], engine=kwargs["engine"]
     )
     clf.fit()
@@ -105,7 +140,7 @@ def predict(scope, predictor, source_columns, **kwargs):
     """
     Predict values using a predictor that was fitted on data. It uses source_columns of scope to predict the data
     :param scope: A scope, containing table_cell predicates describing a table content.
-    :param predictor: A scikit-learn predictor, stored as a Problog Object (accessible through predictor(<predictor>) of the decision_tree funtion).
+    :param predictor: A predictor, stored as a Problog Object (accessible through predictor(<predictor>) for example).
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
     :param kwargs:
     :return: Predictions from predictor using source_columns of scope, as well as predictions metadata.

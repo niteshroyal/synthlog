@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import importlib
+from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ from synthlog.mercs.core.MERCS import MERCS
 logger = init_logger()
 
 
-class Predictor:
+class Predictor(ABC):
     def __init__(
         self,
         scope=None,
@@ -22,6 +23,14 @@ class Predictor:
         database=None,
         engine=None,
     ):
+        """
+
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        """
         self.scope = scope
         self.source_columns = source_columns
         self.target_columns = target_columns
@@ -29,8 +38,7 @@ class Predictor:
         self.database = database
         self.engine = engine
 
-        self.query_term = Term("predictor_object", None, None, None, None)
-
+        self.problog_obj = None
         query_obj = self.get_object_from_db()
         if query_obj:
             self.problog_obj = query_obj
@@ -48,7 +56,10 @@ class Predictor:
 
         # We try to retrieve the model trained with the same parameters
         res_predictor_object = [
-            t for t in self.engine.query(self.database, self.query_term, subcall=True)
+            t
+            for t in self.engine.query(
+                self.database, self.get_query_term(), subcall=True
+            )
         ]
 
         # If we succeed, we retrieve the previously trained object.
@@ -58,17 +69,35 @@ class Predictor:
                 return r
 
     def match_query_res(self, r):
+        """
+        Function matching a result from the database to the current Predictor object
+        :param r:
+        :return:
+        """
         return (
             r[0].functor == term2str(self.scope)
             and r[1].functor == self.source_columns
             and r[2].functor == self.target_columns
         )
 
+    def get_query_term(self):
+        """
+        Return the Term that is used to query the database to retrieve the current Predictor object.
+        It is based on the to_term() function and replaces each argument by None (the _ in problog).
+        :return:
+        """
+        own_term = self.to_term()
+        return Term(own_term.functor, *[None] * len(own_term.args))
+
     def get_object_from_db(self):
         res = self.get_db_result()
         return res[3] if res else None
 
     def to_term(self):
+        """
+        Term representation of the current Predictor object
+        :return:
+        """
         return Term(
             "predictor_object",
             self.scope,
@@ -77,8 +106,9 @@ class Predictor:
             self.problog_obj,
         )
 
+    @abstractmethod
     def fit(self):
-        raise NotImplementedError
+        return NotImplemented
 
     def output_terms(self):
         predictor_term = Term("predictor", self.problog_obj)
@@ -108,6 +138,15 @@ class FitPredictor(Predictor):
         engine=None,
         parameters=None,
     ):
+        """
+        :param modelclass: A class (not an instance, but the class itself) of a predictor implementing the fit(x,y) method. Scikit-learn classifiers satisfiy this definition.
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        :param parameters: Parameters to pass to the constructor of modelclass. This is a dictionary.
+        """
         super().__init__(
             scope=scope,
             source_columns=source_columns,
@@ -122,17 +161,8 @@ class FitPredictor(Predictor):
 
     def fit(self):
         """
-        Learn scikit learn predictor clf on scope. It uses source_columns to predict target_columns
-        :param scope: A scope, containing table_cell predicates describing a table content.
-        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
-        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
-        :param kwargs:
-        :return: A tuple: list of Terms, classifier_object
-        List of Terms is:
-            predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-            target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-            source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-        classifier_object is the classifier, as a Problog object
+        If a predictor object is matched on the database, does nothing.
+        Else, learn the predictor model on scope. It uses source_columns to predict target_columns and stores the model in Problog database.
         """
         # If the object was not retrieved from db, we train the model
         if not self.object_from_db:
@@ -172,6 +202,15 @@ class SKLearnPredictor(FitPredictor):
         engine=None,
         parameters=None,
     ):
+        """
+        :param modelname: The name of the scikit-learn classifier to use. Name is the package name, without the sklearn part. For example, the name of a decision tree is "tree.DecisionTreeClassifier"
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        :param parameters: Parameters to pass to the constructor of modelname. This is a dictionary.
+        """
         self.modelname = "sklearn.%s" % unquote(modelname)
         modulename, classname = self.modelname.rsplit(".", 1)
         modelclass = getattr(importlib.import_module(modulename), classname)
@@ -201,6 +240,15 @@ class DecisionTree(SKLearnPredictor):
         engine=None,
         parameters=None,
     ):
+        """
+        Creates a decision tree based on the scikit-learn implementation in tree.DecisionTreeClassifier
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        :param parameters: Parameters to pass to the constructor of the decision tree. This is a dictionary. Parameters are the same as tree.DecisionTreeClassifier.
+        """
         super().__init__(
             "tree.DecisionTreeClassifier",
             scope,
@@ -231,6 +279,15 @@ class RandomForest(SKLearnPredictor):
         engine=None,
         parameters=None,
     ):
+        """
+        Creates a random forest based on the scikit-learn implementation in ensemble.RandomForestClassifier
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        :param parameters: Parameters to pass to the constructor of the decision tree. This is a dictionary. Parameters are the same as ensemble.RandomForestClassifier.
+        """
         super().__init__(
             "ensemble.RandomForestClassifier",
             scope,
@@ -255,6 +312,14 @@ class MERCSPredictor(Predictor):
     def __init__(
         self, scope, source_columns, database=None, engine=None, parameters=None
     ):
+        """
+        Creates a MERCS predictor.
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        :param parameters: Parameters to pass to the constructor of MERCS.
+        """
         super().__init__(
             scope=scope,
             source_columns=source_columns,
@@ -268,17 +333,8 @@ class MERCSPredictor(Predictor):
 
     def fit(self):
         """
-        Learn scikit learn predictor clf on scope. It uses source_columns to predict target_columns
-        :param scope: A scope, containing table_cell predicates describing a table content.
-        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
-        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
-        :param kwargs:
-        :return: A tuple: list of Terms, classifier_object
-        List of Terms is:
-            predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
-            target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-            source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
-        classifier_object is the classifier, as a Problog object
+        If a predictor object is matched on the database, does nothing.
+        Else, learn the predictor model on scope. It uses source_columns to predict source_columns (MERCS can predict any column from its sources) and stores the model in Problog database.
         """
         # If the object was not retrieved from db, we train the model
         if not self.object_from_db:
@@ -323,6 +379,14 @@ class MERCSWhiteBoxPredictor(MERCSPredictor):
     def __init__(
         self, scope, source_columns, database=None, engine=None, parameters=None
     ):
+        """
+        Creates a MERCS predictor, exposing its internal trees. It is a white box model
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param database: The database of Problog
+        :param engine: The engine of Problog
+        :param parameters: Parameters to pass to the constructor of MERCS.
+        """
         super().__init__(
             scope,
             source_columns,
@@ -332,6 +396,10 @@ class MERCSWhiteBoxPredictor(MERCSPredictor):
         )
 
     def output_terms(self):
+        """
+        Exposes internal trees as decision tree predicates
+        :return:
+        """
         dt_terms = []
         for dt, dt_code in zip(self.model.m_list, self.model.m_codes):
             dt_source_columns = [
