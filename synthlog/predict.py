@@ -78,6 +78,28 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
     return clf.output_terms()
 
 
+@problog_export_nondet("+term", "+list", "-term")
+def mercs(scope, source_columns, **kwargs):
+    """
+    Learn a random forest predictor on scope. It uses source_columns to predict target_columns
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        Source column should have numeric values.
+    :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+    :param kwargs:
+    :return: A list of Terms.
+    predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
+    mercs(<predictor> is created, with <predictor> the scikit-learn predictor object.
+    target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+    """
+    clf = MERCSPredictor(
+        scope, source_columns, database=kwargs["database"], engine=kwargs["engine"]
+    )
+    clf.fit()
+    return clf.output_terms()
+
+
 @problog_export_nondet("+term", "+term", "+list", "-term")
 def predict(scope, predictor, source_columns, **kwargs):
     """

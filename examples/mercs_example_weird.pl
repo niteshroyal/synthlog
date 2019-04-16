@@ -1,6 +1,6 @@
 :- use_module('../synthlog/spreadsheet.py').
 :- use_module('../synthlog/predict.py').
-:- use_module('../synthlog/mercs.py').
+%:- use_module('../synthlog/mercs.py').
 :- use_module(library(aggregate)).
 :- use_module(library(lists)).
 

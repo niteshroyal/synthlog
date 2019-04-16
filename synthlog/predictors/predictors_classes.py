@@ -3,10 +3,12 @@ from __future__ import print_function
 import importlib
 
 import numpy as np
+import pandas as pd
 
 from problog.util import init_logger
-
 from problog.logic import Term, Object, term2str, unquote
+
+from synthlog.mercs.core.MERCS import MERCS
 
 logger = init_logger()
 
@@ -247,6 +249,113 @@ class RandomForest(SKLearnPredictor):
 
     def __repr__(self):
         return "RF({})".format(id(self))
+
+
+class MERCSPredictor(Predictor):
+    def __init__(
+        self, scope, source_columns, database=None, engine=None, parameters=None
+    ):
+        super().__init__(
+            scope=scope,
+            source_columns=source_columns,
+            target_columns=source_columns,
+            database=database,
+            engine=engine,
+        )
+        # So far, we do nothing with parameters
+        self.parameters = parameters
+        self.model = MERCS()
+
+    def fit(self):
+        """
+        Learn scikit learn predictor clf on scope. It uses source_columns to predict target_columns
+        :param scope: A scope, containing table_cell predicates describing a table content.
+        :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+        :param target_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as columns to predict for the predictor.
+        :param kwargs:
+        :return: A tuple: list of Terms, classifier_object
+        List of Terms is:
+            predictor(<predictor>) is created, with <predictor> the scikit-learn predictor object.
+            target(<predictor>, <column>) are created for each target column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+            source(<predictor>, <column>) are created for each source column. <predictor> is the scikit-learn predictor object and <column> is column(<table_name>, <col_number>)
+        classifier_object is the classifier, as a Problog object
+        """
+        # If the object was not retrieved from db, we train the model
+        if not self.object_from_db:
+            table_cell_term_list = [
+                t[1]
+                for t in self.engine.query(
+                    self.database, Term("':'", self.scope, None), subcall=True
+                )
+                if t[1].functor == "table_cell"
+            ]
+
+            relevant_table = [
+                t
+                for t in table_cell_term_list
+                if t.args[0] == self.target_columns[0].args[0]
+            ]
+
+            # Filter data
+            matrix = cells_to_matrix(relevant_table)
+            src_cols = [s.args[1].value for s in self.source_columns]
+            matrix = matrix[:, src_cols]
+
+            # Train a MERCS model
+
+            data = pd.DataFrame(matrix)  # MERCS still needs this (elia: I'm so sorry)
+            self.model.fit(data)
+
+            # We add the new predictor in the database to be able to retrieve it in future calls
+            self.database.add_fact(self.to_term())
+
+    def __str__(self):
+        return "MERCS({})".format(id(self))
+
+    def __repr__(self):
+        return "MERCS({})".format(id(self))
+
+    def output_terms(self):
+        return super().output_terms() + [Term("mercs", self.problog_obj)]
+
+
+class MERCSWhiteBoxPredictor(MERCSPredictor):
+    def __init__(
+        self, scope, source_columns, database=None, engine=None, parameters=None
+    ):
+        super().__init__(
+            scope,
+            source_columns,
+            database=database,
+            engine=engine,
+            parameters=parameters,
+        )
+
+    def output_terms(self):
+        dt_terms = []
+        for dt, dt_code in zip(self.model.m_list, self.model.m_codes):
+            dt_source_columns = [
+                x for i, x in enumerate(self.source_columns) if dt_code[i] == 0
+            ]
+            dt_target_columns = [
+                x for i, x in enumerate(self.source_columns) if dt_code[i] == 1
+            ]
+
+            # We create decision tree objects (is it DTClassifier or Regressor, check that!)
+            dt_object = DecisionTree(
+                self.scope,
+                dt_source_columns,
+                dt_target_columns,
+                self.database,
+                self.engine,
+            )
+            # We set the model to the actual decision tree
+            dt_object.model = dt
+            self.database.add_fact(dt_object.to_term())
+
+            dt_terms.extend(dt_object.output_terms())
+
+        return super().output_terms() + dt_terms
 
 
 def cells_to_matrix(cell_term_list):
