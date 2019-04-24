@@ -110,6 +110,10 @@ class Predictor(ABC):
     def fit(self):
         return NotImplemented
 
+    @abstractmethod
+    def predict(self, X):
+        return NotImplemented
+
     def output_terms(self):
         predictor_term = Term("predictor", self.problog_obj)
         target_terms = [
@@ -191,6 +195,9 @@ class FitPredictor(Predictor):
 
             # We add the new predictor in the database to be able to retrieve it in future calls
             self.database.add_fact(self.to_term())
+
+    def predict(self, X):
+        return self.model.predict(X)
 
     def to_term(self):
         """
@@ -406,6 +413,9 @@ class MERCSPredictor(Predictor):
 
     def output_terms(self):
         return super().output_terms() + [Term("mercs", self.problog_obj)]
+
+    def predict(self, X):
+        return self.model.predict(X)
 
 
 class MERCSWhiteBoxPredictor(MERCSPredictor):
