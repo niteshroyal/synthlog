@@ -173,7 +173,7 @@ def predict(scope, predictor, source_columns, **kwargs):
 
     src_cols = [s.args[1].value for s in source_columns]
 
-    clf = predictor.functor.model
+    clf = predictor.functor
     y_pred = clf.predict(matrix[:, src_cols])
 
     if len(y_pred.shape) == 1:
