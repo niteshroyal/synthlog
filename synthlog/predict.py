@@ -29,7 +29,7 @@ def sklearn_predictor(scope, predictor_name, source_columns, target_columns, **k
     source(<predictor>, <column>) are created for each source column. <predictor> is the predictor object and <column> is column(<table_name>, <col_number>)
     """
     clf = SKLearnPredictor(
-        predictor_name,
+        term2str(predictor_name),
         scope,
         source_columns,
         target_columns,
