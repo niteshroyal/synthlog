@@ -147,6 +147,12 @@ class FitPredictor(Predictor):
         :param engine: The engine of Problog
         :param parameters: Parameters to pass to the constructor of modelclass. This is a dictionary.
         """
+        if parameters is None:
+            parameters = {}
+        self.parameters = parameters
+        self.model = modelclass(**self.parameters)
+        self.modelclass = modelclass
+
         super().__init__(
             scope=scope,
             source_columns=source_columns,
@@ -154,10 +160,6 @@ class FitPredictor(Predictor):
             database=database,
             engine=engine,
         )
-        if parameters is None:
-            parameters = {}
-        self.parameters = parameters
-        self.model = modelclass(**self.parameters)
 
     def fit(self):
         """
@@ -189,6 +191,37 @@ class FitPredictor(Predictor):
 
             # We add the new predictor in the database to be able to retrieve it in future calls
             self.database.add_fact(self.to_term())
+
+    def to_term(self):
+        """
+        Term representation of the current Predictor object
+        :return:
+        """
+        return Term(
+            "predictor_object",
+            self.scope,
+            Object(self.modelclass),
+            Object(self.source_columns),
+            Object(self.target_columns),
+            self.problog_obj,
+        )
+
+    def match_query_res(self, r):
+        """
+        Function matching a result from the database to the current Predictor object
+        :param r:
+        :return:
+        """
+        return (
+            r[0].functor == term2str(self.scope)
+            and r[1].functor == self.modelclass
+            and r[2].functor == self.source_columns
+            and r[3].functor == self.target_columns
+        )
+
+    def get_object_from_db(self):
+        res = self.get_db_result()
+        return res[4] if res else None
 
 
 class SKLearnPredictor(FitPredictor):
