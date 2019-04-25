@@ -1,4 +1,4 @@
-from problog.logic import Term, Constant, Object
+from problog.logic import Term, Constant, Object, list2term
 
 
 def init_cell(row, column, value, p=None):
@@ -163,7 +163,7 @@ def init_table_cell_type(table_name, row, column, cell_type):
     )
 
 
-def init_table_header(table_name, column, value):
+def init_table_header(table_name, column, value, column_type, column_unique_values):
     """
     Initialize a table_header predicate
     :param table_name: The name of the table containing this header
@@ -183,6 +183,8 @@ def init_table_header(table_name, column, value):
         Constant("'{}'".format(table_name)),
         Constant(column),
         Constant(value),
+        Constant(column_type),
+        list2term(column_unique_values),
     )
 
 

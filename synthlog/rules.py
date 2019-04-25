@@ -37,21 +37,24 @@ def evaluate_probfoil_rules(hypothesis):
         result.append(
             Term(
                 "accuracy_rule",
-                Constant(rule.target.functor + "_" + str(i)),
+                Constant(rule.target.functor),
+                Constant(i),
                 Constant(accuracy(rule)),
             )
         )
         result.append(
             Term(
                 "precision_rule",
-                Constant(rule.target.functor + "_" + str(i)),
+                Constant(rule.target.functor),
+                Constant(i),
                 Constant(precision(rule)),
             )
         )
         result.append(
             Term(
                 "recall_rule",
-                Constant(rule.target.functor + "_" + str(i)),
+                Constant(rule.target.functor),
+                Constant(i),
                 Constant(recall(rule)),
             )
         )
@@ -72,14 +75,16 @@ def rules2scope(hypothesis):
             result.append(
                 Term(
                     "blackbox_rule",
-                    Constant(rule.target.functor + "_" + str(count)),
-                    Object(rule),
+                    Constant(rule.target.functor),
+                    Constant(count),
+                    Term("'" + str(rule) + ".'"),
                 )
             )
             result.append(
                 Term(
                     "whitebox_rule",
-                    Constant(rule.target.functor + "_" + str(count)),
+                    Constant(rule.target.functor),
+                    Constant(count),
                     *rule.get_literals()
                 )
             )
@@ -90,14 +95,16 @@ def rules2scope(hypothesis):
         result.append(
             Term(
                 "blackbox_rule",
-                Constant(hypothesis.target.functor + "_0"),
-                Object(hypothesis),
+                Constant(hypothesis.target.functor),
+                Constant(0),
+                Term("'" + str(hypothesis) + ".'"),
             )
         )
         result.append(
             Term(
                 "whitebox_rule",
-                Constant(hypothesis.target.functor + "_0"),
+                Constant(hypothesis.target.functor),
+                Constant(0),
                 *hypothesis.get_literals()
             )
         )
@@ -105,46 +112,34 @@ def rules2scope(hypothesis):
     return result
 
 
-def create_temp_probfoil_file(
+def create_probfoil_inputfile(
     base, mode, target, background_facts, pos_examples, neg_examples
 ):
-    outfile = os.path.join(os.path.dirname(__file__), "../data/probfoil_temp.pl")
-    count = 1
-    while os.path.isfile(outfile):
-        outfile = os.path.join(
-            os.path.dirname(__file__), "../data/probfoil_temp_" + str(count) + ".pl"
-        )
-        count += 1
-
-    outf = open(outfile, "w+")
-
-    outf.write("% Typing of Predicates\n")
-    outf.write("base(" + target + "(row_id)).\n")
+    # Typing of Predicates
+    probfoil_input = "base(" + target + "(row_id)).\n"
     for fact in base:
-        outf.write(fact + "\n")
+        probfoil_input += fact + "\n"
 
-    outf.write("\n%Declarative Bias\n")
+    # Declarative Bias
     for fact in mode:
-        outf.write(fact + "\n")
+        probfoil_input += fact + "\n"
 
-    outf.write("\n% Target Predicate\n")
-    outf.write("learn(" + target + "/1).\n\n")
+    # Target Predicate
+    probfoil_input += "learn(" + target + "/1).\n\n"
 
-    outf.write("\n% Background Facts\n")
+    # Background Facts
     for fact in background_facts:
-        outf.write(fact + "\n")
+        probfoil_input += fact + "\n"
 
-    outf.write("\n% Positive Target Examples\n")
+    # Positive Target Examples
     for fact in pos_examples:
-        outf.write(fact + "\n")
+        probfoil_input += fact + "\n"
 
-    outf.write("\n% Negative Target Examples\n")
+    # Negative Target Examples
     for fact in neg_examples:
-        outf.write("0::" + target + "(" + "(".join(fact.split("(")[1:]) + "\n")
+        probfoil_input += "0::" + target + "(" + "(".join(fact.split("(")[1:]) + "\n"
 
-    outf.close()
-
-    return outfile
+    return probfoil_input
 
 
 @problog_export_nondet("+term", "+term", "-term")
@@ -156,11 +151,7 @@ def probfoil(scope, target_predicate, **kwargs):
     database = kwargs["database"]
     input_facts = engine.query(database, Term("':'", scope, None), subcall=True)
 
-    inputFile = os.path.join(os.path.dirname(__file__), "../data/probfoil_temp.pl")
-    inputf = open(inputFile, "w+")
-
-    inputf.write("% Target Predicate\n")
-    inputf.write("learn(" + t + "/1).\n\n")
+    probfoil_input = "learn(" + t + "/1).\n"
 
     num_facts = len(input_facts)
     base_list = []
@@ -168,59 +159,63 @@ def probfoil(scope, target_predicate, **kwargs):
     mode_list = []
     mode_facts = []
 
-    inputf.write("\n% Background Facts\n")
     for i in range(0, num_facts):
         fact = input_facts[i][1]
         args = ["'" + term2str(val) + "'" for val in fact.args]
 
+        # Ignore propositionalized facts of target predicate
         if (
             len(fact.functor) > len_target + 1
             and fact.functor[: len_target + 1] == t + "_"
         ):
             continue
 
+        # Background Facts
         if fact.functor == t:
             if unquote(str(args[1])) == "yes":
-                inputf.write(fact.functor + "(" + args[0] + ").\n")
+                probfoil_input += fact.functor + "(" + args[0] + ").\n"
             else:
-                inputf.write("0::" + fact.functor + "(" + args[0] + ").\n")
+                probfoil_input += "0::" + fact.functor + "(" + args[0] + ").\n"
 
         else:
-            inputf.write(fact.functor + "(" + ",".join(args) + ").\n")
+            probfoil_input += fact.functor + "(" + ",".join(args) + ").\n"
 
+        # Typing of Predicates
         if fact.functor not in base_list:
             base_list.append(fact.functor)
-
             if fact.functor == t or len(args) == 1:
-                base_facts.append("base(" + fact.functor + "(row_id)).")
+                probfoil_input += "base(" + fact.functor + "(row_id)).\n"
             elif len(args) == 2:
-                base_facts.append(
-                    "base(" + fact.functor + "(row_id, " + fact.functor + "_constant))."
+                probfoil_input += (
+                    "base("
+                    + fact.functor
+                    + "(row_id, "
+                    + fact.functor
+                    + "_constant)).\n"
                 )
 
+        # Declarative Bias
         if fact.functor not in mode_list:
             mode_list.append(fact.functor)
-
             if len(args) == 1 and fact.functor != t:
-                mode_facts.append("mode(" + fact.functor + "(+)).")
+                probfoil_input += "mode(" + fact.functor + "(+)).\n"
             elif len(args) == 2 and fact.functor != t:
-                mode_facts.append("mode(" + fact.functor + "(+, +)).")
-                mode_facts.append("mode(" + fact.functor + "(-, +)).")
-                mode_facts.append("mode(" + fact.functor + "(+, -)).")
+                probfoil_input += "mode(" + fact.functor + "(+, -)).\n"
+                probfoil_input += "mode(" + fact.functor + "(-, +)).\n"
+                probfoil_input += "mode(" + fact.functor + "(+, +)).\n"
 
-    inputf.write("\n% Typing of Predicates\n")
+    # Typing of Predicates
     for fact in base_facts:
-        inputf.write(fact + "\n")
+        probfoil_input += fact + "\n"
 
-    inputf.write("\n%Declarative Bias\n")
+    # Declarative Bias
     for fact in mode_facts:
-        inputf.write(fact + "\n")
+        probfoil_input += fact + "\n"
 
-    inputf.close()
-
-    # print(DataFile(PrologFile(inputFile))._database._ClauseDB__nodes)
-    hypothesis = ProbFOIL2(DataFile(PrologFile(inputFile)), beam_size=5, l=3).learn()
-    os.remove(inputFile)
+    # Run ProbFOIL+
+    hypothesis = ProbFOIL2(
+        DataFile(PrologString(probfoil_input)), beam_size=10, l=4
+    ).learn()
 
     result = rules2scope(hypothesis) + evaluate_probfoil_rules(hypothesis)
     return result
@@ -262,9 +257,9 @@ def probfoil_loop(scope, target_predicate, **kwargs):
         else:
             background_facts.append(fact.functor + "(" + ",".join(args) + ").")
 
+            # Typing of Predicates
             if fact.functor not in base_list:
                 base_list.append(fact.functor)
-
                 if fact.functor == t or len(args) == 1:
                     base_facts.append("base(" + fact.functor + "(row_id)).")
                 elif len(args) == 2:
@@ -276,9 +271,9 @@ def probfoil_loop(scope, target_predicate, **kwargs):
                         + "_constant))."
                     )
 
+            # Declarative Bias
             if fact.functor not in mode_list:
                 mode_list.append(fact.functor)
-
                 if len(args) == 1 and fact.functor != t:
                     mode_facts.append("mode(" + fact.functor + "(+)).")
                 elif len(args) == 2 and fact.functor != t:
@@ -288,7 +283,6 @@ def probfoil_loop(scope, target_predicate, **kwargs):
 
     result = []
 
-    count = 0
     for target_constant in target_facts.keys():
         pos_examples = target_facts[target_constant]
         neg_examples = []
@@ -296,7 +290,8 @@ def probfoil_loop(scope, target_predicate, **kwargs):
             if key != target_constant:
                 neg_examples += value
 
-        file = create_temp_probfoil_file(
+        # Create ProbFOIL Input
+        probfoil_input = create_probfoil_inputfile(
             base_facts,
             mode_facts,
             t + "_" + target_constant,
@@ -305,14 +300,11 @@ def probfoil_loop(scope, target_predicate, **kwargs):
             neg_examples,
         )
 
-        hypothesis = ProbFOIL2(DataFile(PrologFile(file)), beam_size=10, l=4).learn()
-        os.remove(file)
-
-        num_rules = len(hypothesis.to_clauses(hypothesis.target.functor)) - 1
-        if num_rules < 1:
-            num_rules = 1
+        # Run ProbFOIL+
+        hypothesis = ProbFOIL2(
+            DataFile(PrologString(probfoil_input)), beam_size=10, l=4
+        ).learn()
 
         result += rules2scope(hypothesis) + evaluate_probfoil_rules(hypothesis)
-        count += num_rules
 
     return result
