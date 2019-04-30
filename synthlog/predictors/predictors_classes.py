@@ -38,6 +38,8 @@ class Predictor(ABC):
         self.database = database
         self.engine = engine
 
+        self.confidence = 0.5
+
         self.problog_obj = None
         query_obj = self.get_object_from_db()
         if query_obj:
@@ -198,6 +200,9 @@ class FitPredictor(Predictor):
 
     def predict(self, X):
         return self.model.predict(X)
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
 
     def to_term(self):
         """
@@ -416,6 +421,9 @@ class MERCSPredictor(Predictor):
 
     def predict(self, X):
         return self.model.predict(X)
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
 
 
 class MERCSWhiteBoxPredictor(MERCSPredictor):

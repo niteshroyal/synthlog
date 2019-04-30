@@ -5,6 +5,7 @@ from problog.extern import problog_export_nondet
 from itertools import product
 
 from problog.util import init_logger
+from problog.logic import Term, Constant
 from synthlog.keywords import init_cell_pred
 
 from synthlog.predictors.predictors_classes import *
@@ -87,6 +88,7 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
         target_columns,
         database=kwargs["database"],
         engine=kwargs["engine"],
+        parameters={"random_state": 1},
     )
     clf.fit()
     return clf.output_terms()
@@ -195,4 +197,85 @@ def predict(scope, predictor, source_columns, **kwargs):
         + cell_pred_terms
         + predictor_term
         + source_terms
+    )
+
+
+@problog_export_nondet("+term", "+term", "+list", "-term", "-term")
+def predict(scope, predictor, source_columns, **kwargs):
+    """
+    Predict values using a predictor that was fitted on data. It uses source_columns of scope to predict the data
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param predictor: A predictor, stored as a Problog Object (accessible through predictor(<predictor>) for example).
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+    :param kwargs:
+    :return: Predictions from predictor using source_columns of scope, as well as predictions metadata.
+    prediction(<scope>, <predictor>, <source_columns>) is created. <scope> is the scope parameter, as a Problog object, <predictor> is the predictor parameter, as a Problog object and <source_columns> are the source_columns parameter as a Problog object.
+        This whole prediction/3 is used as a key for the prediction object. In the future, it might be better to use a unique identifier or something else!
+    cell_pred(<row_id>, <col_id>, <value>, <prediction_term>) are created for each prediction. <row_id> and <col_id> are (1,1) indexed, NOT from the table_cell row and column ids.
+        The <col_id> corresponds to the index of the target column of predictor. <value> is the predicted value. <prediction_term> is whole prediction(<scope>, <predictor>, <source_columns>) defined above.
+    predictor(<prediction_term>, <predictor>) is created. <prediction_term> is whole prediction(<scope>, <predictor>, <source_columns>) defined above, <predictor> is the predictor parameter, as a Problog object
+    source(<prediction_term>, <source_column>) are created for each source_column. <prediction_term> is whole prediction(<scope>, <predictor>, <source_columns>) defined above, <source_column> is column(<table_name>, <col_number>)
+    All these predictors have a probability attached to it. This probability is available through the second returned column.
+    """
+    prediction_term_3 = Term(
+        "prediction", Object(scope), predictor, Object(source_columns)
+    )
+
+    prediction_term_1 = Term("prediction", prediction_term_3)
+
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+    table_cell_term_list = [
+        t[1]
+        for t in engine.query(database, Term("':'", scope, None), subcall=True)
+        if t[1].functor == "table_cell"
+    ]
+
+    relevant_table = [
+        t for t in table_cell_term_list if t.args[0] == source_columns[0].args[0]
+    ]
+
+    matrix = cells_to_matrix(relevant_table)
+
+    src_cols = [s.args[1].value for s in source_columns]
+
+    clf = predictor.functor
+
+    y_prob = clf.predict_proba(matrix[:, src_cols])
+
+    if len(y_prob.shape) > 2:
+        n_rows, n_classes, n_cols = y_prob.shape
+    else:
+        n_rows, n_classes = y_prob.shape
+        n_cols = 1
+
+    cell_pred_terms = []
+    for r, cl, c in product(range(n_rows), range(n_classes), range(n_cols)):
+        if n_cols > 1:
+            proba = y_prob[r, cl, c]
+        else:
+            proba = y_prob[r, cl]
+        cell_pred_terms.append(
+            (
+                init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], predictor),
+                # init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], prediction_term_3),
+                Constant(proba),
+            )
+        )
+
+    # predictor_term = [(Term("predictor", prediction_term_3, predictor), Constant(1))]
+    source_terms = [
+        # (Term("source", prediction_term_3, s), Constant(1)) for s in source_columns
+        (Term("source", predictor, s), Constant(1))
+        for s in source_columns
+    ]
+
+    confidence_term = (Term("confidence", predictor), Constant(clf.confidence))
+
+    return (
+        [(prediction_term_1, Constant(1)), (prediction_term_3, Constant(1))]
+        + cell_pred_terms
+        # + predictor_term
+        + source_terms
+        + [confidence_term]
     )
