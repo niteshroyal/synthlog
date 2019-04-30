@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+from argparse import ArgumentParser
 
 
 def execute(cmd):
@@ -18,8 +18,15 @@ def execute(cmd):
 
 
 def main():
+    parser = ArgumentParser()
+    parser.add_argument("files", nargs="+", help="files to combine in a Synthlog model")
+    parser.add_argument(
+        "--problog", dest="problog", default="problog", help="Problog executable"
+    )
+    args = parser.parse_args()
+
     environment = os.path.join(os.path.dirname(__file__), "environment.pl")
-    for line in execute(["problog", environment] + sys.argv[1:] + ["--combine"]):
+    for line in execute([args.problog, environment] + args.files + ["--combine"]):
         print(line, end="")
 
 
