@@ -1,5 +1,5 @@
-:- use_module('../synthlog/spreadsheet.py').
-:- use_module('../synthlog/predict.py').
+# :- use_module('../synthlog/spreadsheet.py').
+# :- use_module('../synthlog/predict.py').
 
 
 % Get the tables (from CSV)
