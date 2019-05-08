@@ -19,7 +19,6 @@ magic_models:X :-random_forest(magic_tables,
                                X).
 
 % Do a probabilistic prediction
-Prob::predict(S, Pred, C, X) :- predict(S, Pred, C, X, Prob).
 
 magic_predict:X :- magic_models:predictor(Y), predict(magic_tables, Y, [column('T1', 2), column('T1', 3)], X), magic_models:source(Y, column('T1', 2)), magic_models:source(Y, column('T1', 3)).
 magic_predict:X :- magic_models:predictor(Y), predict(magic_tables, Y, [column('T1', 2), column('T1', 5)], X), magic_models:source(Y, column('T1', 2)), magic_models:source(Y, column('T1', 5)).

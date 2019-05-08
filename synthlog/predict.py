@@ -88,7 +88,7 @@ def random_forest(scope, source_columns, target_columns, **kwargs):
         target_columns,
         database=kwargs["database"],
         engine=kwargs["engine"],
-        parameters={"random_state": 1},
+        parameters={"random_state": 1},  # TODO: Remove this after tests
     )
     clf.fit()
     return clf.output_terms()
