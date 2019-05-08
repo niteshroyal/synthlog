@@ -183,7 +183,7 @@ class InductiveDBWrapper:
 
         for scope_id, similar_scope in scopes:
             unpickled_similar = pickle.loads(similar_scope)
-            if unpickled_scope == unpickled_similar:
+            if str(unpickled_scope) == str(unpickled_similar):
                 return scope_id
 
         with self.connection:
@@ -202,7 +202,7 @@ class InductiveDBWrapper:
 
         for term_id, similar_term in terms:
             unpickled_similar = pickle.loads(similar_term)
-            if unpickled_term == unpickled_similar:
+            if str(unpickled_term) == str(unpickled_similar):
                 return term_id
 
         with self.connection:
