@@ -38,6 +38,8 @@ class Predictor(ABC):
         self.database = database
         self.engine = engine
 
+        self.confidence = 0.5
+
         self.problog_obj = None
         query_obj = self.get_object_from_db()
         if query_obj:
@@ -108,6 +110,10 @@ class Predictor(ABC):
 
     @abstractmethod
     def fit(self):
+        return NotImplemented
+
+    @abstractmethod
+    def predict(self, X):
         return NotImplemented
 
     def output_terms(self):
@@ -191,6 +197,12 @@ class FitPredictor(Predictor):
 
             # We add the new predictor in the database to be able to retrieve it in future calls
             self.database.add_fact(self.to_term())
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
 
     def to_term(self):
         """
@@ -406,6 +418,12 @@ class MERCSPredictor(Predictor):
 
     def output_terms(self):
         return super().output_terms() + [Term("mercs", self.problog_obj)]
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
 
 
 class MERCSWhiteBoxPredictor(MERCSPredictor):

@@ -4,3 +4,4 @@
 :- use_module(library(lists)).
 list(X,X).
 :- use_module('../synthlog/utils.py').
+:- consult('../synthlog/predict.pl').
