@@ -193,7 +193,20 @@ class FitPredictor(Predictor):
             src_cols = [s.args[1].value for s in self.source_columns]
             tgt_cols = [s.args[1].value for s in self.target_columns]
 
-            self.model.fit(matrix[:, src_cols], matrix[:, tgt_cols])
+            # If target is an object, we try to convert it to different types
+            fit_target = matrix[:, tgt_cols]
+            if matrix[:, tgt_cols].dtype == np.object:
+                try:
+                    fit_target = matrix[:, tgt_cols].astype(int)
+                except:
+                    try:
+                        fit_target = matrix[:, tgt_cols].astype(float)
+                    except:
+                        try:
+                            fit_target = matrix[:, tgt_cols].astype(str)
+                        except:
+                            fit_target = matrix[:, tgt_cols].astype(np.object)
+            self.model.fit(matrix[:, src_cols], fit_target)
 
             # We add the new predictor in the database to be able to retrieve it in future calls
             self.database.add_fact(self.to_term())
@@ -479,8 +492,13 @@ class MERCSWhiteBoxPredictor(MERCSPredictor):
 
 def cells_to_matrix(cell_term_list):
     min_y, max_y, min_x, max_x = [None, None, None, None]
+    col_types = {}
     for cell_term in cell_term_list:
         y, x = cell_term.args[1].value, cell_term.args[2].value
+        if not x in col_types:
+            col_types[x] = []
+        col_types[x].append(type(cell_term.args[3].value))
+
         if min_y is None or y < min_y:
             min_y = y
         if max_y is None or y > max_y:
@@ -491,11 +509,24 @@ def cells_to_matrix(cell_term_list):
             max_x = x
     row = max_y
     column = max_x
+
+    # Ideally, we would like the right datatype for each cell instead of np.object.
+    # This is not possible with numpy currently
     matrix = np.empty(shape=(row, column), dtype=np.object)
 
     for cell_term in cell_term_list:
         matrix[
             cell_term.args[1].value - 1, cell_term.args[2].value - 1
         ] = cell_term.args[3].value
+
+    # matrix = np.array(
+    #     matrix,
+    #     dtype=[
+    #         (str(i), np.object)
+    #         if len(set(col_types[i])) != 1
+    #         else (str(i), np.dtype(list(set(col_types[i]))[0]))
+    #         for i in range(min_x, max_x + 1)
+    #     ],
+    # )
 
     return matrix
