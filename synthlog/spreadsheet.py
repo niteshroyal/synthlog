@@ -90,6 +90,16 @@ def load_csv(filename):
     return result
 
 
+def convert(value, type):
+    if type == "int":
+        return int(value)
+    if type == "string":
+        return str(value)
+    if type == "float":
+        return float(value)
+    return value
+
+
 @problog_export_nondet("+term", "-term")
 def detect_tables(scope, **kwargs):
     """
@@ -139,7 +149,14 @@ def detect_tables(scope, **kwargs):
 
             for i in range(table.range.height):
                 result.append(
-                    init_table_cell(table.name, i + 1, j + 1, table.data[i, j])
+                    init_table_cell(
+                        table.name,
+                        i + 1,
+                        j + 1,
+                        convert(
+                            table.data[i, j], table.type_data[i, j]
+                        ),  # We convert to the right data type
+                    )
                 )
 
                 result.append(
