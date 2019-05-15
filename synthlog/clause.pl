@@ -1,14 +1,14 @@
 :- use_module('clause.py').
 
 % Clause parsing
-Scope:X :- Scope:Z, unify_clause(Z,X,Y), evaluate(Scope,Y).
+P::Scope:X :- Scope:Z, unify_clause(Z,X,P,Y), evaluate(Scope,Y).
 
 % Evaluation rules
 evaluate(Scope,Y) :- Scope:Y.
 %% X < Y
 evaluate(Scope,(X < Y)) :- ground(X), ground(Y), X < Y.
 %% X <= Y
-evaluate(Scope,(X <= Y)) :- ground(X), ground(Y), X <= Y.
+evaluate(Scope,(X =< Y)) :- ground(X), ground(Y), X =< Y.
 %% X > Y
 evaluate(Scope,(X > Y)) :- ground(X), ground(Y), X > Y.
 %% X >= Y
