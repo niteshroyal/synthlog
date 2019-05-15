@@ -2,7 +2,7 @@
 
 a:(a:-b).
 a:(c:-a,b).
-a:(e:-c;d).
+a:(0.8::e:-c;d).
 a:(f:-a,c,e).
 a:(g:-support(X), X < Y, Y is 2).
 a:b.
