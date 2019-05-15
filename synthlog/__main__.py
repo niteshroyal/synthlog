@@ -23,10 +23,16 @@ def main():
     parser.add_argument(
         "--problog", dest="problog", default="problog", help="Problog executable"
     )
-    args = parser.parse_args()
+    args, unknownargs = parser.parse_known_args()
 
     environment = os.path.join(os.path.dirname(__file__), "environment.pl")
-    for line in execute([args.problog, environment] + args.files + ["--combine"]):
+    for line in execute(
+        args.problog.split(" ")
+        + [environment]
+        + args.files
+        + unknownargs
+        + ["--combine"]
+    ):
         print(line, end="")
 
 

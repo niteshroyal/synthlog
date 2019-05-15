@@ -58,6 +58,31 @@ def load_inductive_db(filename):
     return Object(idb)
 
 
+@problog_export("+str", "-term")
+def load_prob_inductive_db(filename):
+    """
+    Load predicates from a database (with probabilities on terms)
+
+    :param filename: The database filename
+    :type filename: str
+
+    :return: The database Term
+    :rtype: Problog Object
+    """
+    fin = problog_export.database.resolve_filename(filename)
+    if fin:
+        filename = fin
+
+    idb = InductiveDBWrapper(filename, export_proba=True)
+
+    # Say to Problog engine that if scopes are queried, the inductive database has to be called first
+    problog_export_raw("+term", "+term", "+term")(
+        idb, funcname="'scope_in_database'", modname=None
+    )
+
+    return Object(idb)
+
+
 @problog_export("+term", "+term", "+term")
 def save_term(scope, term, inductive_database):
     idb = inductive_database.functor
@@ -81,6 +106,38 @@ def save_term(scope, term, inductive_database):
     return ()
 
 
+@problog_export("+term", "+term", "+term", "+term")
+def save_term(scope, term, proba, inductive_database):
+    idb = inductive_database.functor
+
+    if not proba.is_constant():
+        raise InvalidValue("The probability needs to be a number")
+    if not isinstance(idb, InductiveDBWrapper):
+        raise InvalidValue(
+            "The inductive database object has to contain an InductiveDBWrapper."
+        )
+
+    if proba.value == 1:
+        term.probability = None
+    else:
+        term.probability = proba
+    # print(term)
+
+    pickled_term = pickle.dumps(term)
+    pickled_scope = pickle.dumps(scope)
+
+    idb.save_term(
+        scope.functor,
+        scope.arity,
+        pickled_scope,
+        term.functor,
+        term.arity,
+        pickled_term,
+    )
+
+    return ()
+
+
 #######################
 #                     #
 #       Classes       #
@@ -89,11 +146,13 @@ def save_term(scope, term, inductive_database):
 
 
 class InductiveDBWrapper:
-    def __init__(self, filename):
+    def __init__(self, filename, export_proba=False):
         self.filename = unquote(filename)
         self.connection = sqlite3.connect(self.filename)
         self.cursor = self.connection.cursor()
+        self.proba = export_proba
         self.__init_tables()
+        self.__previous_insert = set()
 
     def __call__(self, *args, **kwargs):
         scope_args = ["%"] * 2
@@ -108,22 +167,36 @@ class InductiveDBWrapper:
                 term_args[2] = args[1].arity
 
         res = []
+
         with self.connection:
             scopes = self.__get_scopes(*scope_args)
             for scope_id, scope in scopes:
                 term_args[0] = scope_id
                 terms = self.__get_terms(*term_args)
 
-                res += [
-                    (pickle.loads(scope), pickle.loads(term))
-                    for scope_id, term in terms
-                ]
+                unpickled_scope = pickle.loads(scope)
+                for term_id, term in terms:
+                    if term_id not in self.__previous_insert:
+                        unpickled_term = pickle.loads(term)
+
+                        if not self.proba:
+                            res.append((unpickled_scope, unpickled_term))
+                        else:
+                            proba = unpickled_term.probability
+                            if proba is None:
+                                proba = 1
+                            unpickled_term.probability = None
+                            if not isinstance(proba, Constant):
+                                proba = Constant(proba)
+                            res.append((unpickled_scope, unpickled_term, proba))
 
         return res
 
     def save_term(self, scope_name, scope_arity, scope, term_name, term_arity, term):
         scope_id = self.__insert_scope(scope_name, scope_arity, scope)
-        self.__insert_term(scope_id, term_name, term_arity, term)
+        self.__previous_insert.add(
+            self.__insert_term(scope_id, term_name, term_arity, term)
+        )
 
     # Internal methods #
 
@@ -183,7 +256,7 @@ class InductiveDBWrapper:
 
         for scope_id, similar_scope in scopes:
             unpickled_similar = pickle.loads(similar_scope)
-            if unpickled_scope == unpickled_similar:
+            if str(unpickled_scope) == str(unpickled_similar):
                 return scope_id
 
         with self.connection:
@@ -202,7 +275,7 @@ class InductiveDBWrapper:
 
         for term_id, similar_term in terms:
             unpickled_similar = pickle.loads(similar_term)
-            if unpickled_term == unpickled_similar:
+            if str(unpickled_term) == str(unpickled_similar):
                 return term_id
 
         with self.connection:
