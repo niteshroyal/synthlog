@@ -18,5 +18,12 @@ def parse_clause(term_string, engine=None, database=None, **kwargs):
 
 
 @problog_export("+str", "-term")
+def string_to_clause(term_string, engine=None, database=None, **kwargs):
+    parser = PrologParser(ExtendedPrologFactory())
+    res = parser.parseString(unquote(term_string))
+    return res[0]
+
+
+@problog_export("+str", "-term")
 def str2term(term_string):
     return Term(unquote(term_string))
