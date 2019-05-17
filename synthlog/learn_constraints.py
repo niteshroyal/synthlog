@@ -21,10 +21,11 @@ def learn_dummy_constraint(**kwargs):
     """
 
     """
+    term_string2 = "0.3::wrong:- final_pred(8, 1, V), V < 600."
     term_string = "wrong :- final_pred(8,1, V), V < 310."
+
     parser = PrologParser(ExtendedPrologFactory())
     res = parser.parseString(unquote(term_string))
 
-    # term_string2 = "0.3::wrong: - magic_predict:final_pred(8, 1, V), V < 600."
-    # res.extend(parser.parseString(unquote(term_string2)))
+    res.extend(parser.parseString(unquote(term_string2)))
     return res
