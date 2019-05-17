@@ -77,7 +77,7 @@ class Predictor(ABC):
         :return:
         """
         return (
-            r[0].functor == term2str(self.scope)
+            term2str(r[0]) == term2str(self.scope)
             and r[1].functor == self.source_columns
             and r[2].functor == self.target_columns
         )
@@ -238,7 +238,7 @@ class FitPredictor(Predictor):
         :return:
         """
         return (
-            r[0].functor == term2str(self.scope)
+            term2str(r[0]) == term2str(self.scope)
             and r[1].functor == self.modelclass
             and r[2].functor == self.source_columns
             and r[3].functor == self.target_columns
