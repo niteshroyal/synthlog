@@ -1,5 +1,4 @@
-# :- use_module('../synthlog/spreadsheet.py').
-# :- use_module('../synthlog/predict.py').
+:- use_module('../synthlog/learn_constraints.py').
 
 
 % Get the tables (from CSV)
@@ -30,4 +29,15 @@ weight(X) :- magic_predict:source(C1, column('T1', 3)), magic_predict:confidence
 magic_predict:final_pred(X,Y,V):- weight(C1), magic_predict:source(C1, column('T1', 3)), magic_predict:cell_pred(X,Y,V,C1).
 magic_predict:final_pred(X,Y,V):- weight(C2), magic_predict:source(C2, column('T1', 5)), magic_predict:cell_pred(X,Y,V,C2).
 
-query(magic_predict:final_pred(_,_,_)).
+magic_constraints:X :- learn_dummy_constraint(X).
+% The constraints returned by learn_dummy_constraint are:
+% wrong :- magic_predict:final_pred(8,1, V), V < 310.
+% 0.3::wrong :- magic_predict:final_pred(8,1, V), V < 600.
+
+contains_clauses(magic_predict).
+contains_clauses(magic_constraints).
+
+magic_predict:X :- magic_constraints:X.
+
+%query(magic_constraints:final_pred(_,_,_)).
+query(magic_predict:_).
