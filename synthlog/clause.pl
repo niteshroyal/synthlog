@@ -1,10 +1,16 @@
 :- use_module('clause.py').
 
+contains_clauses(blbladummyscope).
+
 % Clause parsing
-P::Scope:X :- Scope:Z, unify_clause(Z,X,P,Y), evaluate(Scope,Y).
+P::Scope:X :- contains_clauses(Scope), Scope:Z, unify_clause(Z,X,P,Y), evaluate(Scope,Y).
 
 % Evaluation rules
 evaluate(Scope,Y) :- Scope:Y.
+evaluate(Scope, \+ Y) :- ground(Y), \+ evaluate(Scope,Y).
+
+evaluate(Scope,true).
+0::evaluate(Scope,fail).
 %% X < Y
 evaluate(Scope,(X < Y)) :- ground(X), ground(Y), X < Y.
 %% X <= Y
