@@ -1,7 +1,13 @@
-:- use_module('spreadsheet.py').
+:- use_module('spreadsheet.pl').
+:- use_module('transformers.pl').
 :- use_module(library(collect)).
 :- use_module(library(aggregate)).
 :- use_module(library(lists)).
 list(X,X).
 :- use_module('../synthlog/utils.py').
-:- consult('../synthlog/predict.pl').
+:- use_module('predict.pl').
+:- use_module('clause.pl').
+
+wrong :- S:wrong.
+
+evidence(\+wrong).
