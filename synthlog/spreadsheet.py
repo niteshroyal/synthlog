@@ -100,25 +100,17 @@ def convert(value, type):
     return value
 
 
-@problog_export_nondet("+term", "-term")
-def detect_tables(scope, **kwargs):
+@problog_export_nondet("+list", "-term")
+def detect_cell_tables(cell_term_list, **kwargs):
     """
     Query the cells of a scope and return table, table_cell and table_cell_type predicates
     :param scope: The scope
-    :type scope: Problog Term
+    :type cell_term_list: Problog Term
     :param kwargs: The keyword arguments used by Problog to give the reference on the database and the engine
     :return: list of Terms that is used in Problog unification (one unification by Term)
     """
     engine = kwargs["engine"]
     database = kwargs["database"]
-    cell_term_list = [
-        t[1]
-        for t in engine.query(
-            database,
-            Term("':'", scope, Term("cell", Var("X"), Var("Y"), Var("Z"))),
-            subcall=True,
-        )
-    ]
 
     matrix = cells_to_matrix(cell_term_list)
     for i in range(matrix.shape[0]):
