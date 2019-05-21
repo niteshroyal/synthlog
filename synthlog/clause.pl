@@ -1,5 +1,4 @@
 :- use_module('clause.py').
-:- use_module(library(lists)).
 
 % Clause parsing
 :- Scope:Z, apply_clause(Scope,Z).
