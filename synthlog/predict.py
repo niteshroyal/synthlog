@@ -67,8 +67,8 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
     return clf.output_terms()
 
 
-@problog_export_nondet("+term", "+list", "+list", "-term")
-def random_forest(scope, source_columns, target_columns, **kwargs):
+@problog_export_nondet("+term", "+list", "+list", "+list", "-term")
+def random_forest(scope, source_columns, target_columns, term_list, **kwargs):
     """
     Learn a random forest predictor on scope. It uses source_columns to predict target_columns
     :param scope: A scope, containing table_cell predicates describing a table content.
@@ -201,8 +201,8 @@ def predict(scope, predictor, source_columns, **kwargs):
     )
 
 
-@problog_export_nondet("+term", "+term", "+list", "-term", "-term")
-def predict(scope, predictor, source_columns, **kwargs):
+@problog_export_nondet("+term", "+term", "+list", "+list", "-term", "-term")
+def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
     """
     Predict values using a predictor that was fitted on data. It uses source_columns of scope to predict the data
     :param scope: A scope, containing table_cell predicates describing a table content.
@@ -222,14 +222,6 @@ def predict(scope, predictor, source_columns, **kwargs):
     )
 
     prediction_term_1 = Term("prediction", prediction_term_3)
-
-    engine = kwargs["engine"]
-    database = kwargs["database"]
-    table_cell_term_list = [
-        t[1]
-        for t in engine.query(database, Term("':'", scope, None), subcall=True)
-        if t[1].functor == "table_cell"
-    ]
 
     relevant_table = [
         t for t in table_cell_term_list if t.args[0] == source_columns[0].args[0]
