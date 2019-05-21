@@ -1,10 +1,16 @@
 :- use_module('clause.py').
+:- use_module(library(lists)).
 
 % Clause parsing
-P::Scope:X :- Scope:Z, unify_clause(Z,X,P,Y), evaluate(Scope,Y).
+:- Scope:Z, apply_clause(Scope,Z).
+% P::Scope:X :- Scope:Z, Z \== X, unify_clause(Z,X,P,Y), evaluate(Scope,Y).
 
 % Evaluation rules
 evaluate(Scope,Y) :- Scope:Y.
+evaluate(Scope,var(Y)) :- Scope:Y.
+%% \+ Y
+evaluate(Scope, \+ Y) :- \+ evaluate(Scope, Y). % (evaluate(Scope,Y), store_existing_term(Y)); is_not_existing_term(Y).
+evaluate(Scope, not(Y)) :- evaluate(Scope, \+ Y).
 %% X < Y
 evaluate(Scope,(X < Y)) :- ground(X), ground(Y), X < Y.
 %% X <= Y
