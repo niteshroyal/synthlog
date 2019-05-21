@@ -72,12 +72,16 @@ def rules2scope(hypothesis):
         rule = hypothesis
         count = 0
         for rule_str in rules[1:]:
+            if "true" in str(rule):
+                text = str(rule).replace("true", "row(A)")
+            else:
+                text = str(rule) + ",row(A)"
             result.append(
                 Term(
                     "blackbox_rule",
                     Constant(rule.target.functor),
                     Constant(count),
-                    Term("'" + str(rule) + ".'"),
+                    Term("'" + text + ".'"),
                 )
             )
             result.append(
@@ -92,12 +96,16 @@ def rules2scope(hypothesis):
             count += 1
 
     else:
+        if "true" in str(hypothesis):
+            text = str(hypothesis).replace("true", "row(A)")
+        else:
+            text = str(hypothesis) + ",row(A)"
         result.append(
             Term(
                 "blackbox_rule",
                 Constant(hypothesis.target.functor),
                 Constant(0),
-                Term("'" + str(hypothesis) + ".'"),
+                Term("'" + text + ".'"),
             )
         )
         result.append(
@@ -155,9 +163,9 @@ def probfoil(scope, target_predicate, **kwargs):
 
     num_facts = len(input_facts)
     base_list = []
-    base_facts = []
+    # base_facts = []
     mode_list = []
-    mode_facts = []
+    # mode_facts = []
 
     for i in range(0, num_facts):
         fact = input_facts[i][1]
@@ -168,14 +176,10 @@ def probfoil(scope, target_predicate, **kwargs):
             len(fact.functor) > len_target + 1
             and fact.functor[: len_target + 1] == t + "_"
         ):
-            continue
-
-        # Background Facts
-        if fact.functor == t:
-            if unquote(str(args[1])) == "yes":
-                probfoil_input += fact.functor + "(" + args[0] + ").\n"
+            if fact.functor.endswith("yes"):
+                probfoil_input += t + "(" + args[0] + ").\n"
             else:
-                probfoil_input += "0::" + fact.functor + "(" + args[0] + ").\n"
+                probfoil_input += "0::" + t + "(" + args[0] + ").\n"
 
         else:
             probfoil_input += fact.functor + "(" + ",".join(args) + ").\n"
@@ -183,7 +187,9 @@ def probfoil(scope, target_predicate, **kwargs):
         # Typing of Predicates
         if fact.functor not in base_list:
             base_list.append(fact.functor)
-            if fact.functor == t or len(args) == 1:
+            if fact.functor.startswith(t + "_"):
+                probfoil_input += "base(" + t + "(row_id)).\n"
+            elif len(args) == 1:
                 probfoil_input += "base(" + fact.functor + "(row_id)).\n"
             elif len(args) == 2:
                 probfoil_input += (
@@ -197,20 +203,20 @@ def probfoil(scope, target_predicate, **kwargs):
         # Declarative Bias
         if fact.functor not in mode_list:
             mode_list.append(fact.functor)
-            if len(args) == 1 and fact.functor != t:
+            if len(args) == 1 and not fact.functor.startswith(t + "_"):
                 probfoil_input += "mode(" + fact.functor + "(+)).\n"
-            elif len(args) == 2 and fact.functor != t:
+            elif len(args) == 2 and not fact.functor.startswith(t + "_"):
                 probfoil_input += "mode(" + fact.functor + "(+, -)).\n"
                 probfoil_input += "mode(" + fact.functor + "(-, +)).\n"
                 probfoil_input += "mode(" + fact.functor + "(+, +)).\n"
 
-    # Typing of Predicates
-    for fact in base_facts:
-        probfoil_input += fact + "\n"
-
-    # Declarative Bias
-    for fact in mode_facts:
-        probfoil_input += fact + "\n"
+    # # Typing of Predicates
+    # for fact in base_facts:
+    #     probfoil_input += fact + "\n"
+    #
+    # # Declarative Bias
+    # for fact in mode_facts:
+    #     probfoil_input += fact + "\n"
 
     # Run ProbFOIL+
     hypothesis = ProbFOIL2(

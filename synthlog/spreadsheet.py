@@ -90,6 +90,16 @@ def load_csv(filename):
     return result
 
 
+def convert(value, type):
+    if type == "int":
+        return int(value)
+    if type == "string":
+        return str(value)
+    if type == "float":
+        return float(value)
+    return value
+
+
 @problog_export_nondet("+term", "-term")
 def detect_tables(scope, **kwargs):
     """
@@ -139,7 +149,14 @@ def detect_tables(scope, **kwargs):
 
             for i in range(table.range.height):
                 result.append(
-                    init_table_cell(table.name, i + 1, j + 1, table.data[i, j])
+                    init_table_cell(
+                        table.name,
+                        i + 1,
+                        j + 1,
+                        convert(
+                            table.data[i, j], table.type_data[i, j]
+                        ),  # We convert to the right data type
+                    )
                 )
 
                 result.append(
@@ -195,7 +212,9 @@ def translate_constraint(constraint: Constraint):
         )
 
 
-@problog_export_nondet("+term", "+term", "+term", "+term", "+term", "+term", "-term")
+@problog_export_nondet(
+    "+term", "+term", "+term", "+term", "+term", "+term", "-term", "-float"
+)
 def cell_to_atoms(
     table_name,
     header,
@@ -217,15 +236,23 @@ def cell_to_atoms(
 
     # result = [Term(header, Constant(row_id), Constant(cell_value))]
     result = []
+
+    result.append((Term("row", Constant(row_id)), 1.0))
+
     if column_type == "string":
         for unique_value in column_unique_values1:
-            if unquote(unique_value) == cell_value:
-                # result.append(Term(header + "_" + cell_value, Constant(row_id)))
-                r = 0
+            if unquote(unique_value).lower() == cell_value:
+                result.append((Term(header + "_" + cell_value, Constant(row_id)), 1.0))
             else:
                 # WIth Probability 0
                 result.append(
-                    Term(header + "_" + cell_value, Constant(row_id), p=Constant(0.0))
+                    (
+                        Term(
+                            header + "_" + unquote(unique_value).lower(),
+                            Constant(row_id),
+                        ),
+                        0.0,
+                    )
                 )
     return result
 
