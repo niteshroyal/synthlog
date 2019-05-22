@@ -109,7 +109,7 @@ class Predictor(ABC):
         )
 
     @abstractmethod
-    def fit(self):
+    def fit(self, table_cell_term_list):
         return NotImplemented
 
     @abstractmethod
@@ -167,21 +167,13 @@ class FitPredictor(Predictor):
             engine=engine,
         )
 
-    def fit(self):
+    def fit(self, table_cell_term_list):
         """
         If a predictor object is matched on the database, does nothing.
         Else, learn the predictor model on scope. It uses source_columns to predict target_columns and stores the model in Problog database.
         """
         # If the object was not retrieved from db, we train the model
         if not self.object_from_db:
-            table_cell_term_list = [
-                t[1]
-                for t in self.engine.query(
-                    self.database, Term("':'", self.scope, None), subcall=True
-                )
-                if t[1].functor == "table_cell"
-            ]
-
             relevant_table = [
                 t
                 for t in table_cell_term_list
@@ -210,6 +202,50 @@ class FitPredictor(Predictor):
 
             # We add the new predictor in the database to be able to retrieve it in future calls
             self.database.add_fact(self.to_term())
+
+    # def fit(self):
+    #     """
+    #     If a predictor object is matched on the database, does nothing.
+    #     Else, learn the predictor model on scope. It uses source_columns to predict target_columns and stores the model in Problog database.
+    #     """
+    #     # If the object was not retrieved from db, we train the model
+    #     if not self.object_from_db:
+    #         table_cell_term_list = [
+    #             t[1]
+    #             for t in self.engine.query(
+    #                 self.database, Term("':'", self.scope, None), subcall=True
+    #             )
+    #             if t[1].functor == "table_cell"
+    #         ]
+    #
+    #         relevant_table = [
+    #             t
+    #             for t in table_cell_term_list
+    #             if t.args[0] == self.target_columns[0].args[0]
+    #         ]
+    #
+    #         matrix = cells_to_matrix(relevant_table)
+    #
+    #         src_cols = [s.args[1].value for s in self.source_columns]
+    #         tgt_cols = [s.args[1].value for s in self.target_columns]
+    #
+    #         # If target is an object, we try to convert it to different types
+    #         fit_target = matrix[:, tgt_cols]
+    #         if matrix[:, tgt_cols].dtype == np.object:
+    #             try:
+    #                 fit_target = matrix[:, tgt_cols].astype(int)
+    #             except:
+    #                 try:
+    #                     fit_target = matrix[:, tgt_cols].astype(float)
+    #                 except:
+    #                     try:
+    #                         fit_target = matrix[:, tgt_cols].astype(str)
+    #                     except:
+    #                         fit_target = matrix[:, tgt_cols].astype(np.object)
+    #         self.model.fit(matrix[:, src_cols], fit_target)
+    #
+    #         # We add the new predictor in the database to be able to retrieve it in future calls
+    #         self.database.add_fact(self.to_term())
 
     def predict(self, X):
         return self.model.predict(X)
