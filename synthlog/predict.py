@@ -13,8 +13,10 @@ from synthlog.predictors.predictors_classes import *
 logger = init_logger()
 
 
-@problog_export_nondet("+term", "+term", "+list", "+list", "-term")
-def sklearn_predictor(scope, predictor_name, source_columns, target_columns, **kwargs):
+@problog_export_nondet("+term", "+term", "+list", "+list", "+list", "-term")
+def sklearn_predictor(
+    scope, predictor_name, source_columns, target_columns, term_list, **kwargs
+):
     """
     Learn a scikit-learn predictor on scope. It uses source_columns to predict target_columns
     :param predictor_name: Name of the sklearn predictor to use. For example, "tree.DecisionTreeClassifier" is the name of a decision tree in sklearn.
@@ -37,12 +39,12 @@ def sklearn_predictor(scope, predictor_name, source_columns, target_columns, **k
         database=kwargs["database"],
         engine=kwargs["engine"],
     )
-    clf.fit()
+    clf.fit(term_list)
     return clf.output_terms()
 
 
-@problog_export_nondet("+term", "+list", "+list", "-term")
-def decision_tree(scope, source_columns, target_columns, **kwargs):
+@problog_export_nondet("+term", "+list", "+list", "+list", "-term")
+def decision_tree(scope, source_columns, target_columns, term_list, **kwargs):
     """
     Learn a decision tree predictor on scope. It uses source_columns to predict target_columns
     :param scope: A scope, containing table_cell predicates describing a table content.
@@ -63,7 +65,7 @@ def decision_tree(scope, source_columns, target_columns, **kwargs):
         database=kwargs["database"],
         engine=kwargs["engine"],
     )
-    clf.fit()
+    clf.fit(term_list)
     return clf.output_terms()
 
 
@@ -90,7 +92,7 @@ def random_forest(scope, source_columns, target_columns, term_list, **kwargs):
         engine=kwargs["engine"],
         parameters={"random_state": 1},  # TODO: Remove this after tests
     )
-    clf.fit()
+    clf.fit(term_list)
     return clf.output_terms()
 
 
