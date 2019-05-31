@@ -253,7 +253,9 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
                 proba = y_prob[r, cl]
             cell_pred_terms.append(
                 (
-                    init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], predictor),
+                    init_cell_pred(
+                        r + 1, c + 1, clf.model.classes_[cl].item(), predictor
+                    ),
                     # init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], prediction_term_3),
                     Constant(proba),
                 )
@@ -270,7 +272,10 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
         cell_pred_terms = []
         for r, c in product(range(n_rows), range(n_cols)):
             cell_pred_terms.append(
-                (init_cell_pred(r + 1, c + 1, y_pred[r, c], predictor), Constant(1))
+                (
+                    init_cell_pred(r + 1, c + 1, y_pred[r, c].item(), predictor),
+                    Constant(1),
+                )
             )
 
     # predictor_term = [(Term("predictor", prediction_term_3, predictor), Constant(1))]

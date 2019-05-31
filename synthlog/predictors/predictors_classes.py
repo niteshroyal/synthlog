@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from problog.util import init_logger
-from problog.logic import Term, Object, term2str, unquote
+from problog.logic import Term, Object, Constant, term2str, unquote
 
 from synthlog.mercs.core.MERCS import MERCS
 
@@ -46,7 +46,7 @@ class Predictor(ABC):
             self.problog_obj = query_obj
             self.object_from_db = True
         else:
-            self.problog_obj = Object(self)
+            self.problog_obj = Constant(self)
             self.object_from_db = False
 
     def get_db_result(self):
