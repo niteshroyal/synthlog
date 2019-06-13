@@ -6,4 +6,6 @@ idb(IDB) :- load_inductive_db('db_file.db', IDB).
 a:c.
 :- a:A, idb(IDB), save_term(a, A, IDB).
 
+:(a,c).
+
 query(a:c).
