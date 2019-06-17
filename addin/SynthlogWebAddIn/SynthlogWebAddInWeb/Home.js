@@ -6,6 +6,7 @@
 
     Office.onReady(function () {
         $(document).ready(function () {
+            createStructure();
         });
     });
     // La fonction d'initialisation doit être exécutée chaque fois qu'une nouvelle page est chargée.
@@ -40,6 +41,11 @@
         });
     };
     */
+
+    function createStructure() {
+        const homedir = window.location.host;
+        console.log(homedir);
+    }
 
     function loadSampleData() {
         var values = [
