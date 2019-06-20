@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2048
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynthlogWebAddIn", "SynthlogWebAddIn\SynthlogWebAddIn.csproj", "{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynthlogWebAddInWeb", "SynthlogWebAddInWeb\SynthlogWebAddInWeb.csproj", "{96B47998-BF0F-4A50-97B6-8DA590323B44}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADAB5553-5951-4EC1-8F15-FBDAC8D11B2A}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{96B47998-BF0F-4A50-97B6-8DA590323B44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96B47998-BF0F-4A50-97B6-8DA590323B44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96B47998-BF0F-4A50-97B6-8DA590323B44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96B47998-BF0F-4A50-97B6-8DA590323B44}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {940372E4-4834-49B3-B16E-C8E53D1E3B90}
+	EndGlobalSection
+EndGlobal
