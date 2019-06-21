@@ -58,23 +58,41 @@ exports.generateParameters = function(parameters) {
     const cells = generateCells(parameters.cells);
     terms = generateTermStrings('cell', cells);
     for (var key in parameters) {
-        if (!["cells", "script"].includes(key)) {
+        if (!["cells", "script", "homedir"].includes(key)) {
             if (Array.isArray(parameters[key]))
                 terms += generateTermStrings(key, parameters[key]);
             else
                 terms += generateTermStrings(key, [[parameters[key]]]);
         }
+        else if (key == "homedir") {
+            for (var k in parameters["homedir"]) {
+                if (Array.isArray(parameters[key]))
+                terms += generateTermStrings(
+                    k, 
+                    parameters["homedir"][k], 
+                    fromhome=true
+                );
+            else
+                terms += generateTermStrings(
+                    k, 
+                    [[parameters["homedir"][k]]], 
+                    fromhome=true
+                );
+            }
+        }
     }
     FileSystem.writeFileSync(Path.resolve(homedir, 'parameters.pl'), terms);
 }
 
-function generateTermStrings(key, values) {
+function generateTermStrings(key, values, fromhome=false) {
     terms = "";
     values.forEach(element => {
         args = "";
         element.forEach(arg => { 
             if (args != "") args += ","; 
-            args += arg.toString();
+            a = arg.toString();
+            if (fromhome) a = "'" + Path.resolve(homedir, a) + "'";
+            args += a;
         });
         if (args != "") args = "(" + args + ")";
         terms += "excel:" + key + args + ". ";
@@ -140,8 +158,14 @@ exports.runScript = function(filename, res) {
             res.send({error: err});
         }
         else {
+            console.log(results);
+            var theories = new Set();
+            results.forEach(element => {
+                var splits = element.split(':');
+                if (splits.length > 2) theories.add(splits[0]);
+            });
             res.setHeader('Content-Type', 'application/json');
-            res.send({output: results});
+            res.send({output: results, theories: theories});
         }
     });
 }

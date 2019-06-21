@@ -133,7 +133,9 @@ export default class App extends React.Component {
                   firstColumn: range.columnIndex, 
                   values: range.values
                 },
-                idb: "'synthlog.db'",
+                homedir: {
+                  idb: "synthlog.db"
+                },
                 script: "builtin/init.pl"
               })
             });
