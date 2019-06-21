@@ -9,7 +9,7 @@ import 'isomorphic-fetch';
 export default class App extends React.Component {
   constructor(props, context) {
     super(props, context);
-    this.api = 'http://localhost:3001/api';
+    this.api = 'https://localhost:3001/api';
     this.state = {
       init: false,
       init_error: '',

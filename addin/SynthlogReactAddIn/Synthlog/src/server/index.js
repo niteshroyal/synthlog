@@ -1,11 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const HttpsLocalhost = require('https-localhost');
 // const pino = require('express-pino-logger')();
 const cors = require('cors');
 var structure = require('./librairies/structure');
 var { PythonShell } = require('python-shell');
 
-const app = express();
+const app = HttpsLocalhost();
 app.use(cors());
 
 app.use(bodyParser.urlencoded({ extended: false }));
