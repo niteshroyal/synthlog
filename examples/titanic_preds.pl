@@ -1,18 +1,19 @@
-:- use_module(library(collect)).
-:- use_module(library(aggregate)).
-:- use_module(library(lists)).
-:- use_module(library(string)).
-:- use_module(library(scope)).
-:- use_module('../synthlog/spreadsheet.pl').
-:- use_module('../synthlog/transformers.pl').
-:- use_module('../synthlog/utils.py').
-:- use_module('../synthlog/predict.pl').
-:- use_module('../synthlog/clause.pl').
-list(X,X).
+%:- use_module(library(collect)).
+%:- use_module(library(aggregate)).
+%:- use_module(library(lists)).
+%:- use_module(library(string)).
+%:- use_module(library(scope)).
+%:- use_module('../synthlog/spreadsheet.pl').
+%:- use_module('../synthlog/transformers.pl').
+%:- use_module('../synthlog/utils.py').
+%:- use_module('../synthlog/predict.pl').
+%:- use_module('../synthlog/clause.pl').
+%list(X,X).
 
 %wrong :- S:wrong.
 
 %evidence(\+wrong).
+
 train_data:cell(X,Y,V) :- load_csv('../data/titanic/train.csv', cell(X,Y,V)), Y < 8.
 train_tables:X :- detect_tables(train_data, X).
 

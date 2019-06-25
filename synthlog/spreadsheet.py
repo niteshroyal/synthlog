@@ -78,6 +78,7 @@ def load_spreadsheet(filename):
 
 @problog_export_nondet("+str", "-term")
 def load_csv(filename):
+    print("loading")
     if filename in loaded_csv:
         return loaded_csv[filename]
 
@@ -126,6 +127,7 @@ def detect_tables(scope, **kwargs):
     ]
 
     matrix = cells_to_matrix(cell_term_list)
+
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             if matrix[i, j] is None:

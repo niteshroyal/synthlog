@@ -27,6 +27,8 @@ evaluate(Scope, (X == Y)) :- ground(Y), X == Y.
 evaluate(Scope, (X \== Y)) :- ground(X), ground(Y), X \== Y.
 %% X is Y
 evaluate(Scope,(X is Y)) :- ground(Y), X is Y.
+%% between
+evaluate(Scope,between(X,Y,Z)) :- between(X,Y,Z).
 %% X, Y
 evaluate(Scope,(X,Y)) :- evaluate(Scope,X), evaluate(Scope,Y).
 evaluate(Scope,(X,Y)) :- evaluate(Scope,Y), evaluate(Scope,X).
