@@ -35,9 +35,11 @@
         "debug": "^4.1.1",
         "es6-promise": "^4.2.6",
         "fs": "0.0.1-security",
+        "https-localhost": "^4.1.1",
         "isomorphic-fetch": "^2.2.1",
         "office-ui-fabric-react": "^6.139.0",
         "package.json": "^2.0.1",
+        "python-shell": "^1.0.7",
         "react": "^16.8.2",
         "react-dom": "^16.8.2",
         "request": "^2.88.0"

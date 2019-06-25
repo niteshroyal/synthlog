@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Button, ButtonType } from 'office-ui-fabric-react';
+import CheckLabel from './CheckLabel';
 import Header from './Header';
 import HeroList, { HeroListItem } from './HeroList';
 import Progress from './Progress';
@@ -8,25 +9,21 @@ import 'isomorphic-fetch';
 export default class App extends React.Component {
   constructor(props, context) {
     super(props, context);
-    this.api = 'http://localhost:3001/api';
+    this.api = 'https://localhost:3001/api';
     this.state = {
-      listItems: [],
-      greeting: 'lol',
       init: false,
-      init_error: ''
+      init_error: '',
+      python: false,
+      idb: false
     };
+
+    this.idb_running = false;
+    this.handleClick = this.runIDBGeneration.bind(this);
   }
 
   componentDidMount() {
-    fetch(`${this.api}/init`)
-      .then(response => response.json())
-      .then(json => this.setState(json))
-      .catch(e => this.setState({init_error: e.toString()}))
-
-    fetch(`${this.api}/greeting?name=SynthLog`)
-      .then(response => response.json())
-      .then(json => this.setState(json))
-      .catch(e => this.setState({greeting: e.toString()}))
+    this.initStructure();
+    this.checkPython();
   }
 
   click = async () => {
@@ -66,15 +63,91 @@ export default class App extends React.Component {
         />
       );
     }
+    else if (
+      this.state.init && this.state.python && 
+      !this.state.idb && !this.idb_running
+    ) {
+      this.idb_running = true;
+      this.runIDBGeneration();
+    }
 
     return (
       <div className='ms-welcome'>
-        <Header logo='assets/logo-filled.png' title={this.props.title} message={this.state.greeting} />
-        <HeroList message={this.state.init.toString()} items={this.state.listItems}>
-          <p className='ms-font-l'>Modify the source files, then click <b>Run</b>.</p>
-          <Button className='ms-welcome__action' buttonType={ButtonType.hero} iconProps={{ iconName: 'ChevronRight' }} onClick={this.click}>Run</Button>
-        </HeroList>
+        <div id="info">
+          <CheckLabel 
+            message="Python command" 
+            boolean={ this.state.python } 
+          />
+          <CheckLabel 
+            message="Synthlog initialization" 
+            boolean={ this.state.init }
+          />
+          <CheckLabel
+            message="Inductive database initialization"
+            boolean={ this.state.idb }
+          />
+        </div>
       </div>
     );
+  }
+
+  /*
+  Custom methods
+  */
+
+  checkPython() {
+    fetch(`${this.api}/check_python`) 
+    .then(response => response.json())
+    .then(json => this.setState(json))
+    .catch(e => this.setState({python: false}))
+  }
+
+  initStructure() {
+    fetch(`${this.api}/init`)
+    .then(response => response.json())
+    .then(json => this.setState(json))
+    .catch(e => this.setState({init_error: e.toString()}))
+  }
+
+  runIDBGeneration = async() => {
+    var that = this;
+    try {
+      await Excel.run(function(context) {
+        const sheets = context.workbook.worksheets;
+        const firstSheet = sheets.getActiveWorksheet();
+        var range = firstSheet.getUsedRange();
+        range.load(['rowIndex', 'columnIndex', 'values']);
+        
+        
+        return context.sync()
+          .then(function() {
+            fetch(`${that.api}/run_synthlog`, {
+              method: 'POST',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                cells: {
+                  firstRow: range.rowIndex,
+                  firstColumn: range.columnIndex, 
+                  values: range.values
+                },
+                homedir: {
+                  idb: "synthlog.db"
+                },
+                script: "builtin/init.pl"
+              })
+            });
+          })
+          .then(function() {
+            that.setState({idb: true});
+          });
+        }
+      )
+    }
+    catch(err) {
+      fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
+    }
   }
 }
