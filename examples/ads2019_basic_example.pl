@@ -1,18 +1,18 @@
-:- use_module(library(collect)).
-:- use_module(library(aggregate)).
-:- use_module(library(lists)).
-:- use_module(library(string)).
+%:- use_module(library(collect)).
+%:- use_module(library(aggregate)).
+%:- use_module(library(lists)).
+%:- use_module(library(string)).
 %:- use_module(library(scope)).
-:- use_module('../synthlog/spreadsheet.pl').
-:- use_module('../synthlog/transformers.pl').
-:- use_module('../synthlog/utils.py').
-:- use_module('../synthlog/predict.pl').
-:- use_module('../synthlog/clause.pl').
-list(X,X).
+%:- use_module('../synthlog/spreadsheet.pl').
+%:- use_module('../synthlog/transformers.pl').
+%:- use_module('../synthlog/utils.py').
+%:- use_module('../synthlog/predict.pl').
+%:- use_module('../synthlog/clause.pl').
+%list(X,X).
 
-wrong :- S:wrong.
+%wrong :- S:wrong.
 
-evidence(\+wrong).
+%evidence(\+wrong).
 
 magic_cells:X :- load_csv('../data/magic_train.csv', X).
 magic_tables:X :- detect_tables(magic_cells, X).
