@@ -78,7 +78,6 @@ def load_spreadsheet(filename):
 
 @problog_export_nondet("+str", "-term")
 def load_csv(filename):
-    print("loading")
     if filename in loaded_csv:
         return loaded_csv[filename]
 
