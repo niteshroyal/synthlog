@@ -5,10 +5,10 @@ from problog.extern import problog_export_nondet
 from itertools import product
 
 from problog.util import init_logger
-from problog.logic import Term, Constant
 from synthlog.keywords import init_cell_pred
 
-from synthlog.predictors.predictors_classes import *
+from synthlog.tasks.predictors import *
+from synthlog.tasks.cluster import *
 
 logger = init_logger()
 
@@ -96,6 +96,54 @@ def random_forest(scope, source_columns, target_columns, term_list, **kwargs):
     return clf.output_terms()
 
 
+#################################################
+########## Clustering ###########################
+#################################################
+# TODO: Use separate files (makes more sense I think)
+
+
+@problog_export_nondet("+term", "+term", "+list", "+list", "-term")
+def sklearn_clustering(scope, clustering_name, source_columns, term_list, **kwargs):
+    """
+    Learn a scikit-learn clustering on scope. It uses source_columns
+    :param clustering_name: Name of the sklearn predictor to use. For example, "tree.DecisionTreeClassifier" is the name of a decision tree in sklearn.
+    :param scope: A scope, containing table_cell predicates describing a table content.
+    :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the clustering.
+        Source column should have numeric values.
+    :param kwargs:
+    :return: A list of Terms.
+    clustering(<clustering>) is created, with <clustering> the clustering object.
+    sklearn_clustering(<clustering> is created, with <clustering> the clustering object.
+    source(<clustering>, <column>) are created for each source column. <clustering> is the predictor object and <column> is column(<table_name>, <col_number>)
+    """
+    clust = SKLearnCluster(
+        term2str(clustering_name),
+        scope,
+        source_columns,
+        database=kwargs["database"],
+        engine=kwargs["engine"],
+    )
+    clust.fit(term_list)
+    return clust.output_terms()
+
+
+@problog_export_nondet("+term", "+list", "+list", "-term")
+def kmeans(scope, source_columns, term_list, **kwargs):
+    clus = KMeans(
+        scope,
+        source_columns,
+        database=kwargs["database"],
+        engine=kwargs["engine"],
+        parameters={"n_clusters": 2},
+    )
+    clus.fit(term_list)
+    return clus.output_terms()
+
+
+#################################################
+########## TODOs ###########################
+#################################################
+# TODO: make MERCS use the subquery (should be fairly easy)
 @problog_export_nondet("+term", "+list", "-term")
 def mercs(scope, source_columns, **kwargs):
     """
@@ -210,6 +258,8 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
     :param scope: A scope, containing table_cell predicates describing a table content.
     :param predictor: A predictor, stored as a Problog Object (accessible through predictor(<predictor>) for example).
     :param source_columns: A list of columns, where column is: column(<table_name>, <col_number>). <table_name> is a table name present in table_cell. These columns will be used as input columns for the predictor.
+    :param table_cell_term_list: List of cell terms, representing the data that will be used for the prediction
+    :param pred_name: Name of the predicate that will be used as output predicate
     :param kwargs:
     :return: Predictions from predictor using source_columns of scope, as well as predictions metadata.
     prediction(<scope>, <predictor>, <source_columns>) is created. <scope> is the scope parameter, as a Problog object, <predictor> is the predictor parameter, as a Problog object and <source_columns> are the source_columns parameter as a Problog object.
@@ -217,13 +267,18 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
     cell_pred(<row_id>, <col_id>, <value>, <predictor>) are created for each prediction. <row_id> and <col_id> are (1,1) indexed, NOT from the table_cell row and column ids. cell_pred have an associated probability (1 if no probabilistic prediction is available)
         The <col_id> corresponds to the index of the target column of predictor. <value> is the predicted value. <predictor> is predictor defined above.
     source(<predictor>, <source_column>) are created for each source_column. <predictor> is predictor defined above, <source_column> is column(<table_name>, <col_number>)
-    All these predictors have a probability attached to it. This probability is available through the second returned column.
+    All these tasks have a probability attached to it. This probability is available through the second returned column.
     """
+    clf = predictor.functor
+    pred_name = "prediction"
+    if isinstance(clf, Cluster):
+        pred_name = "clustering"
+
     prediction_term_3 = Term(
-        "prediction", Object(scope), predictor, Object(source_columns)
+        pred_name, Object(scope), predictor, Object(source_columns)
     )
 
-    prediction_term_1 = Term("prediction", prediction_term_3)
+    prediction_term_1 = Term(pred_name, prediction_term_3)
 
     relevant_table = [
         t for t in table_cell_term_list if t.args[0] == source_columns[0].args[0]

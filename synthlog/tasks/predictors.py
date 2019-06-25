@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import importlib
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import numpy as np
 import pandas as pd
@@ -10,11 +10,12 @@ from problog.util import init_logger
 from problog.logic import Term, Object, Constant, term2str, unquote
 
 from synthlog.mercs.core.MERCS import MERCS
+from synthlog.tasks.base_stored_object import StoredObject, cells_to_matrix
 
 logger = init_logger()
 
 
-class Predictor(ABC):
+class Predictor(StoredObject):
     def __init__(
         self,
         scope=None,
@@ -31,44 +32,12 @@ class Predictor(ABC):
         :param database: The database of Problog
         :param engine: The engine of Problog
         """
-        self.scope = scope
         self.source_columns = source_columns
         self.target_columns = target_columns
 
-        self.database = database
-        self.engine = engine
-
         self.confidence = 0.5
 
-        self.problog_obj = None
-        query_obj = self.get_object_from_db()
-        if query_obj:
-            self.problog_obj = query_obj
-            self.object_from_db = True
-        else:
-            self.problog_obj = Constant(self)
-            self.object_from_db = False
-
-    def get_db_result(self):
-        if not self.database or not self.engine:
-            logger.warning(
-                "Could not try to retrieve predictor from db. database and engine should be filled."
-            )
-            return None
-
-        # We try to retrieve the model trained with the same parameters
-        res_predictor_object = [
-            t
-            for t in self.engine.query(
-                self.database, self.get_query_term(), subcall=True
-            )
-        ]
-
-        # If we succeed, we retrieve the previously trained object.
-        # If not, we train a new one
-        for r in res_predictor_object:
-            if self.match_query_res(r):
-                return r
+        super().__init__(scope, database, engine)
 
     def match_query_res(self, r):
         """
@@ -81,15 +50,6 @@ class Predictor(ABC):
             and r[1].functor == self.source_columns
             and r[2].functor == self.target_columns
         )
-
-    def get_query_term(self):
-        """
-        Return the Term that is used to query the database to retrieve the current Predictor object.
-        It is based on the to_term() function and replaces each argument by None (the _ in problog).
-        :return:
-        """
-        own_term = self.to_term()
-        return Term(own_term.functor, *[None] * len(own_term.args))
 
     def get_object_from_db(self):
         res = self.get_db_result()
@@ -524,45 +484,3 @@ class MERCSWhiteBoxPredictor(MERCSPredictor):
             dt_terms.extend(dt_object.output_terms())
 
         return super().output_terms() + dt_terms
-
-
-def cells_to_matrix(cell_term_list):
-    min_y, max_y, min_x, max_x = [None, None, None, None]
-    col_types = {}
-    for cell_term in cell_term_list:
-        y, x = cell_term.args[1].value, cell_term.args[2].value
-        if not x in col_types:
-            col_types[x] = []
-        col_types[x].append(type(cell_term.args[3].value))
-
-        if min_y is None or y < min_y:
-            min_y = y
-        if max_y is None or y > max_y:
-            max_y = y
-        if min_x is None or x < min_x:
-            min_x = x
-        if max_x is None or x > max_x:
-            max_x = x
-    row = max_y
-    column = max_x
-
-    # Ideally, we would like the right datatype for each cell instead of np.object.
-    # This is not possible with numpy currently
-    matrix = np.empty(shape=(row, column), dtype=np.object)
-
-    for cell_term in cell_term_list:
-        matrix[
-            cell_term.args[1].value - 1, cell_term.args[2].value - 1
-        ] = cell_term.args[3].value
-
-    # matrix = np.array(
-    #     matrix,
-    #     dtype=[
-    #         (str(i), np.object)
-    #         if len(set(col_types[i])) != 1
-    #         else (str(i), np.dtype(list(set(col_types[i]))[0]))
-    #         for i in range(min_x, max_x + 1)
-    #     ],
-    # )
-
-    return matrix
