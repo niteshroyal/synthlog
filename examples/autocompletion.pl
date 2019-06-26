@@ -1,3 +1,20 @@
+%:- use_module(library(collect)).
+%:- use_module(library(aggregate)).
+%:- use_module(library(lists)).
+%:- use_module(library(string)).
+%:- use_module(library(scope)).
+%:- use_module('../synthlog/spreadsheet.pl').
+%:- use_module('../synthlog/transformers.pl').
+%:- use_module('../synthlog/utils.py').
+%:- use_module('../synthlog/predict.pl').
+%:- use_module('../synthlog/clause.pl').
+%list(X,X).
+
+%wrong :- S:wrong.
+
+%evidence(\+wrong).
+
+
 % Get the tables (from CSV)
 magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 magic_tables:X :- detect_tables(magic_cells, X).
@@ -58,7 +75,7 @@ magic_constraints:(0.8::wrong:-table_cell(T,X,5,V), V < 300, table_cell(T,X,7,1)
 
 % We apply the constraints to the scope
 magic_final_pred:X :- magic_constraints:X.
-contains_clauses(magic_final_pred).
+%contains_clauses(magic_final_pred).
 
 % And finally, we query for the result
 query(magic_final_pred:table_cell(_,_,_,_)).

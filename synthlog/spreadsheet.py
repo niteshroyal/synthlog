@@ -9,6 +9,7 @@ from problog.logic import (
     unquote,
     term2str,
     Clause,
+    Object,
     Var,
     list2term,
 )
@@ -32,7 +33,9 @@ from synthlog.keywords import (
     init_constraint,
 )
 
-
+# Problog keeps calling the loading/detect table functions, so we cache some of the results
+detect_table_dict = {}
+loaded_csv = {}
 #######################
 #                     #
 #       ProbLog       #
@@ -75,6 +78,9 @@ def load_spreadsheet(filename):
 
 @problog_export_nondet("+str", "-term")
 def load_csv(filename):
+    if filename in loaded_csv:
+        return loaded_csv[filename]
+
     # Resolve the filename with respect to the main Prolog file location.
     csv_file = problog_export.database.resolve_filename(filename)
     if not os.path.isfile(csv_file):
@@ -87,6 +93,7 @@ def load_csv(filename):
             for j, cell in enumerate(row):
                 if cell is not None:
                     result.append(init_cell(i + 1, j + 1, cell))
+    loaded_csv[filename] = result
     return result
 
 
@@ -100,8 +107,8 @@ def convert(value, type):
     return value
 
 
-@problog_export_nondet("+list", "-term")
-def detect_cell_tables(cell_term_list, **kwargs):
+# @problog_export_nondet("+term", "-term")
+def detect_tables(scope, **kwargs):
     """
     Query the cells of a scope and return table, table_cell and table_cell_type predicates
     :param scope: The scope
@@ -112,7 +119,14 @@ def detect_cell_tables(cell_term_list, **kwargs):
     engine = kwargs["engine"]
     database = kwargs["database"]
 
+    cell_term_list = [
+        t[1]
+        for t in engine.query(database, Term("':'", scope, None), subcall=True)
+        if t[1].functor == "cell"
+    ]
+
     matrix = cells_to_matrix(cell_term_list)
+
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             if matrix[i, j] is None:
@@ -183,6 +197,116 @@ def detect_cell_tables(cell_term_list, **kwargs):
                         list(table_header_unique_values[j]),
                     )
                 )
+    return result
+
+
+@problog_export_nondet("+list", "-term")
+def detect_cell_tables(cell_term_list, **kwargs):
+    """
+    Query the cells of a scope and return table, table_cell and table_cell_type predicates
+    :param scope: The scope
+    :type cell_term_list: Problog Term
+    :param kwargs: The keyword arguments used by Problog to give the reference on the database and the engine
+    :return: list of Terms that is used in Problog unification (one unification by Term)
+    """
+
+    def hashfunc(l):
+        return hash("".join([str(hash(e)) for e in l]))
+
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+    if hashfunc(cell_term_list) in detect_table_dict:
+        return detect_table_dict[hashfunc(cell_term_list)]
+
+    # # We try to retrieve the model trained with the same parameters
+    # res_predictor_object = [
+    #     t
+    #     for t in engine.query(
+    #         database, Term("detected_cell_tables", None, None), subcall=True
+    #     )
+    # ]
+    #
+    # # If we succeed, we retrieve the previously trained object.
+    # # If not, we train a new one
+    # for r in res_predictor_object:
+    #     if r[0].functor == hashfunc(cell_term_list):
+    #         return r[1].functor
+
+    matrix = cells_to_matrix(cell_term_list)
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if matrix[i, j] is None:
+                matrix[i, j] = ""
+
+    tables = tables_from_cells(matrix, Orientation.vertical)
+
+    result = []
+    for table in tables:
+        result.append(
+            init_table(
+                table.name,
+                table.range.row + 1,
+                table.range.column + 1,
+                table.range.height,
+                table.range.width,
+            )
+        )
+
+        table_header_type = []
+        table_header_unique_values = []
+        for j in range(table.range.width):
+            table_header_type.append("int")
+            table_header_unique_values.append(set())
+
+            for i in range(table.range.height):
+                result.append(
+                    init_table_cell(
+                        table.name,
+                        i + 1,
+                        j + 1,
+                        convert(
+                            table.data[i, j], table.type_data[i, j]
+                        ),  # We convert to the right data type
+                    )
+                )
+
+                result.append(
+                    init_table_cell_type(
+                        table.name, i + 1, j + 1, table.type_data[i, j]
+                    )
+                )
+
+                if table.type_data[i, j] == "string":
+                    table_header_type[j] = "string"
+
+                table_header_unique_values[j].add(table.data[i, j])
+
+        for j in range(table.range.width):
+            if table_header_type[j] == "string":
+                result.append(
+                    init_table_header(
+                        table.name,
+                        j + 1,
+                        matrix[table.range.row - 1, j],
+                        "string",
+                        list(table_header_unique_values[j]),
+                    )
+                )
+            else:
+                result.append(
+                    init_table_header(
+                        table.name,
+                        j + 1,
+                        matrix[table.range.row - 1, j],
+                        table_header_type[j],
+                        list(table_header_unique_values[j]),
+                    )
+                )
+
+    detect_table_dict[hashfunc(cell_term_list)] = result
+    database.add_fact(
+        Term("detected_cell_tables", Object(hashfunc(cell_term_list)), Object(result))
+    )
     return result
 
 

@@ -22,7 +22,7 @@ def init_cell(row, column, value, p=None):
     return Term("cell", Constant(row), Constant(column), Constant(value), p=p)
 
 
-def init_cell_pred(row, column, value, prediction_id, p=None):
+def init_cell_pred(row, column, value, prediction_obj, p=None):
     """
     Initialize a cell predicate
     :param row: The cell row ID
@@ -45,7 +45,7 @@ def init_cell_pred(row, column, value, prediction_id, p=None):
         Constant(row),
         Constant(column),
         Constant(value),
-        Constant(prediction_id),
+        prediction_obj,
         p=p,
     )
 
