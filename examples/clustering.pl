@@ -14,10 +14,10 @@
 
 %evidence(\+wrong).
 
-magic_cells:X :- load_csv('../data/magic_train.csv', X).
+magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 magic_tables:X :- detect_tables(magic_cells, X).
 
-magic_models:X :- kmeans(magic_tables,
+magic_models:X :- sklearn_clustering(magic_tables,'mixture.GaussianMixture',
                     [column('T1', 3), column('T1', 4)],
                     X).
 
