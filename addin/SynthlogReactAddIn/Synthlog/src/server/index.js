@@ -12,10 +12,12 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 // app.use(pino);
 
-app.get('/api/init', (req, res) => {
-    const inited = structure.init();
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ init: inited }));
+app.get('/api/init_backend', (req, res) => {
+    structure.init(res);
+});
+
+app.get('/api/init_problog', (req, res) => {
+    structure.init_problog(res);
 });
 
 app.get('/api/check_python', (req, res) => {
