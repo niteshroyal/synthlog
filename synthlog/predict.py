@@ -116,12 +116,16 @@ def sklearn_clustering(scope, clustering_name, source_columns, term_list, **kwar
     sklearn_clustering(<clustering> is created, with <clustering> the clustering object.
     source(<clustering>, <column>) are created for each source column. <clustering> is the predictor object and <column> is column(<table_name>, <col_number>)
     """
+    params = {}
+    if unquote(term2str(clustering_name)) == "mixture.GaussianMixture":
+        params["n_components"] = 2
     clust = SKLearnCluster(
         term2str(clustering_name),
         scope,
         source_columns,
         database=kwargs["database"],
         engine=kwargs["engine"],
+        parameters=params,
     )
     clust.fit(term_list)
     return clust.output_terms()
@@ -306,11 +310,15 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
                 proba = y_prob[r, cl, c]
             else:
                 proba = y_prob[r, cl]
+
+            if isinstance(clf, Cluster):
+                class_name = cl
+            else:
+                class_name = clf.model.classes_[cl].item()
+
             cell_pred_terms.append(
                 (
-                    init_cell_pred(
-                        r + 1, c + 1, clf.model.classes_[cl].item(), predictor
-                    ),
+                    init_cell_pred(r + 1, c + 1, class_name, predictor),
                     # init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], prediction_term_3),
                     Constant(proba),
                 )

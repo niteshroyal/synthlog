@@ -1,20 +1,20 @@
-%:- use_module(library(collect)).
-%:- use_module(library(aggregate)).
-%:- use_module(library(lists)).
-%:- use_module(library(string)).
+:- use_module(library(collect)).
+:- use_module(library(aggregate)).
+:- use_module(library(lists)).
+:- use_module(library(string)).
 %:- use_module(library(scope)).
-%:- use_module('../synthlog/spreadsheet.pl').
-%:- use_module('../synthlog/transformers.pl').
-%:- use_module('../synthlog/utils.py').
-%:- use_module('../synthlog/predict.pl').
-%:- use_module('../synthlog/clause.pl').
-%list(X,X).
+:- use_module('../synthlog/spreadsheet.pl').
+:- use_module('../synthlog/transformers.pl').
+:- use_module('../synthlog/utils.py').
+:- use_module('../synthlog/predict.pl').
+:- use_module('../synthlog/clause.pl').
+list(X,X).
 
-%wrong :- S:wrong.
+wrong :- S:wrong.
 
-%evidence(\+wrong).
+evidence(\+wrong).
 
-train_data:cell(X,Y,V) :- load_csv('../data/titanic/train.csv', cell(X,Y,V)), Y < 8.
+train_data:cell(X,Y,V) :- load_csv('../data/titanic/train_small.csv', cell(X,Y,V)), Y < 8.
 train_tables:X :- detect_tables(train_data, X).
 
 titanic_models:X :- sklearn_predictor(train_tables, 'ensemble.RandomForestClassifier',
@@ -22,7 +22,7 @@ titanic_models:X :- sklearn_predictor(train_tables, 'ensemble.RandomForestClassi
                         [column('T1', 1)],
                         X).
 
-test_data:cell(X,Y,V) :- load_csv('../data/titanic/test.csv', cell(X,Y,V)), Y<7.
+test_data:cell(X,Y,V) :- load_csv('../data/titanic/test_small.csv', cell(X,Y,V)), Y<7.
 test_tables:X :- detect_tables(test_data, X).
 
 titanic_preds:X :- titanic_models:predictor(Y), predict(test_tables,Y,
