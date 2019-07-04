@@ -46,8 +46,25 @@ function generateCells(cells) {
                 res.push([
                     i+cells.firstRow, 
                     j+cells.firstColumn,
-                    cells.values[i][j]
+                    cells.values[i][j],
                 ])
+            }
+        }
+    }
+
+    return res;
+}
+
+function generateTypes(cells) {
+    var res = []
+
+    if(cells) {
+        var row_number = cells.values.length;
+        var column_number = cells.values[0].length;
+
+        for (var i = 0; i < row_number; i++) {
+            for (var j = 0; j < column_number; j++) {
+                res.push(cells.valueTypes[i][j]);
             }
         }
     }
@@ -57,7 +74,8 @@ function generateCells(cells) {
 
 exports.generateParameters = function(parameters) {
     const cells = generateCells(parameters.cells);
-    terms = generateTermStrings('cell', cells);
+    const types = generateTypes(parameters.cells);
+    terms = generateTermStrings('cell', cells, false, types);
     for (var key in parameters) {
         if (!["cells", "script", "homedir"].includes(key)) {
             if (Array.isArray(parameters[key]))
@@ -82,21 +100,32 @@ exports.generateParameters = function(parameters) {
             }
         }
     }
+    terms += "\nquery(excel:cell(1,1,_))."
     FileSystem.writeFileSync(Path.resolve(homedir, 'parameters.pl'), terms);
 }
 
-function generateTermStrings(key, values, fromhome=false) {
+function generateTermStrings(key, values, fromhome=false, types=[]) {
     terms = "";
-    values.forEach(element => {
+    values.forEach((element,i) => {
         args = "";
-        element.forEach(arg => { 
+        var addTerm = true;
+        element.forEach((arg,j) => { 
             if (args != "") args += ","; 
             a = arg.toString();
             if (fromhome) a = "'" + Path.resolve(homedir, a) + "'";
+            // We add a quote if the argument is a string (except for the fist 2 arguments, that are x and y coordinates)
+            if (types){
+                if(types[i] == "String" && j > 1)
+                    a = "'" + a + "'";
+                // If it's an empty cell, we don't add it
+                if(types[i]=="Empty")
+                    addTerm = false;
+            }
             args += a;
         });
         if (args != "") args = "(" + args + ")";
-        terms += "excel:" + key + args + ". ";
+        if(addTerm)
+            terms += "excel:" + key + args + ". ";
     });
     return terms;
 }

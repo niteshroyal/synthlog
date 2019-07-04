@@ -6,6 +6,8 @@ import HeroList, { HeroListItem } from './HeroList';
 import Progress from './Progress';
 import Select from 'react-select';
 import 'isomorphic-fetch';
+import { PredictionDiv } from './PredictionDiv';
+
 
 export default class App extends React.Component {
   constructor(props, context) {
@@ -18,7 +20,8 @@ export default class App extends React.Component {
       init_error: '',
       python: false,
       idb: false,
-      theories: []
+      theories: [],
+      message:''
     };
 
     this.idb_running = false;
@@ -108,6 +111,8 @@ export default class App extends React.Component {
         />
         <button>Move</button>
         </div>
+
+        <PredictionDiv parent={this}/>
       </div>
     );
   }
@@ -115,7 +120,6 @@ export default class App extends React.Component {
   /*
   Custom methods
   */
-
   checkPython() {
     fetch(`${this.api}/check_python`) 
     .then(response => response.json())
@@ -144,7 +148,7 @@ export default class App extends React.Component {
         const sheets = context.workbook.worksheets;
         const firstSheet = sheets.getActiveWorksheet();
         var range = firstSheet.getUsedRange();
-        range.load(['rowIndex', 'columnIndex', 'values']);
+        range.getCe;
         
         
         return context.sync()
@@ -159,7 +163,8 @@ export default class App extends React.Component {
                 cells: {
                   firstRow: range.rowIndex,
                   firstColumn: range.columnIndex, 
-                  values: range.values
+                  values: range.values,
+                  valueTypes: range.valueTypes
                 },
                 homedir: {
                   idb: "synthlog.db"
