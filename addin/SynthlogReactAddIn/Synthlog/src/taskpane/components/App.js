@@ -3,6 +3,8 @@ import CheckLabel from './CheckLabel';
 import Progress from './Progress';
 import 'isomorphic-fetch';
 import TheoryLoader from './TheoryLoader';
+import { PredictionDiv } from './PredictionDiv';
+
 
 export default class App extends React.Component {
   constructor(props, context) {
@@ -16,7 +18,8 @@ export default class App extends React.Component {
       python: false,
       idb: false,
       theories: [],
-      debug: ''
+      debug: '',
+      message:''
     };
 
     this.idb_running = false;
@@ -106,6 +109,7 @@ export default class App extends React.Component {
           <p>{ this.state.debug }</p>
         </div>
 
+        <PredictionDiv parent={this}/>
       </div>
     );
   }
@@ -113,7 +117,6 @@ export default class App extends React.Component {
   /*
   Custom methods
   */
-
   checkPython() {
     fetch(`${this.api}/check_python`) 
     .then(response => response.json())
@@ -165,7 +168,7 @@ export default class App extends React.Component {
         const sheets = context.workbook.worksheets;
         const firstSheet = sheets.getActiveWorksheet();
         var range = firstSheet.getUsedRange();
-        range.load(['rowIndex', 'columnIndex', 'values']);
+        range.load(['rowIndex', 'columnIndex', 'values', 'valueTypes']);
         
         return context.sync()
           .then(function() {
@@ -179,7 +182,8 @@ export default class App extends React.Component {
                 cells: {
                   firstRow: range.rowIndex,
                   firstColumn: range.columnIndex, 
-                  values: range.values
+                  values: range.values,
+                  valueTypes: range.valueTypes
                 },
                 homedir: {
                   idb: "synthlog.db"
