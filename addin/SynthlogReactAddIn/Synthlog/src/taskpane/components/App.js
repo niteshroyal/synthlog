@@ -148,7 +148,7 @@ export default class App extends React.Component {
         const sheets = context.workbook.worksheets;
         const firstSheet = sheets.getActiveWorksheet();
         var range = firstSheet.getUsedRange();
-        range.getCe;
+        range.load(['rowIndex', 'columnIndex', 'values', 'valueTypes']);
         
         
         return context.sync()
