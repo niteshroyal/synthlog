@@ -1,11 +1,8 @@
 import * as React from 'react';
-import { Button, ButtonType } from 'office-ui-fabric-react';
 import CheckLabel from './CheckLabel';
-import Header from './Header';
-import HeroList, { HeroListItem } from './HeroList';
 import Progress from './Progress';
-import Select from 'react-select';
 import 'isomorphic-fetch';
+import TheoryLoader from './TheoryLoader';
 
 export default class App extends React.Component {
   constructor(props, context) {
@@ -18,7 +15,8 @@ export default class App extends React.Component {
       init_error: '',
       python: false,
       idb: false,
-      theories: []
+      theories: [],
+      debug: ''
     };
 
     this.idb_running = false;
@@ -99,15 +97,15 @@ export default class App extends React.Component {
           <hr/>
         </div>
         
-        <div id='theories'>
-          <h3>Move to another theory</h3>
-        <Select 
-          name="theory" 
-          options={ this.state.theories } 
-          defaultValue={ this.state.active }
+        <TheoryLoader
+          active={ this.state.active }
+          theories={ this.state.theories }
         />
-        <button>Move</button>
+
+        <div>
+          <p>{ this.state.debug }</p>
         </div>
+
       </div>
     );
   }
@@ -137,6 +135,29 @@ export default class App extends React.Component {
     .catch(e => this.setState({init_error: e.toString()}))
   }
 
+  loadTheories(theories, active=false) {
+    var theory_options = [];
+    try {
+      theories.forEach(function(element) {
+        theory_options.push(
+          {
+            value: element,
+            label: element
+          });
+      });
+      if (theory_options.length > 0) {
+        this.setState({
+            theories: theory_options, 
+            active: theory_options[0],
+            debug: theory_options[0].label
+          });
+      }
+    }
+    catch(err) {
+      this.setState({debug: err.message});
+    }
+  }
+
   runIDBGeneration = async() => {
     var that = this;
     try {
@@ -145,7 +166,6 @@ export default class App extends React.Component {
         const firstSheet = sheets.getActiveWorksheet();
         var range = firstSheet.getUsedRange();
         range.load(['rowIndex', 'columnIndex', 'values']);
-        
         
         return context.sync()
           .then(function() {
@@ -172,18 +192,10 @@ export default class App extends React.Component {
               return response.json();
             })
             .then(function(json) {
-              if (json.theories) {
-                theory_options = [];
-                json.theories.forEach(element => {
-                  theory_options.push({value: element});
-                });
-              }
+              if (json.theories)
+                that.loadTheories(json.theories, true);
             });
           });
-          /*.then(function(response) {
-            that.setState({idb: true});
-            return response.json();
-          });*/
         }
       )
     }

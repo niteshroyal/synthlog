@@ -168,14 +168,15 @@ exports.runScript = function(filename, res) {
             res.send({error: err});
         }
         else {
-            console.log(results);
+            console.log("Results: " + results);
             var theories = new Set();
             results.forEach(element => {
                 var splits = element.split(':');
                 if (splits.length > 2) theories.add(splits[0]);
             });
             res.setHeader('Content-Type', 'application/json');
-            res.send({output: results, theories: theories});
+            console.log("Theories: " + Array.from(theories));
+            res.send({output: results, theories: Array.from(theories)});
         }
     });
 }
