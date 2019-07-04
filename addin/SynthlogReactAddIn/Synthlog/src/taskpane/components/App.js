@@ -139,20 +139,12 @@ export default class App extends React.Component {
   }
 
   loadTheories(theories, active=false) {
-    var theory_options = [];
     try {
-      theories.forEach(function(element) {
-        theory_options.push(
-          {
-            value: element,
-            label: element
-          });
-      });
-      if (theory_options.length > 0) {
+      if (theories.length > 0) {
         this.setState({
-            theories: theory_options, 
-            active: theory_options[0],
-            debug: theory_options[0].label
+            theories: theories, 
+            active: theories[0],
+            debug: theories[0].label
           });
       }
     }
