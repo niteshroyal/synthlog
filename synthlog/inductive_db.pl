@@ -1,4 +1,5 @@
-% :- use_module('inductive_db.py').
+:- use_module('inductive_db.py').
+scope_in_database('dummy','dummy',1). 
 P::X:Y :- scope_in_database(X,Y,P), P < 1.
 X:Y :- scope_in_database(X,Y,1).
 

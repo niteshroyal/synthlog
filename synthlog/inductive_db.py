@@ -14,6 +14,7 @@ import dill as pickle
 import numpy as np
 
 import openpyxl as xls
+from copy import deepcopy
 
 logger = logging.getLogger("problog")
 
@@ -117,21 +118,22 @@ def save_term(scope, term, proba, inductive_database):
             "The inductive database object has to contain an InductiveDBWrapper."
         )
 
+    saved_term = deepcopy(term)
     if proba.value == 1:
-        term.probability = None
+        saved_term.probability = None
     else:
-        term.probability = proba
-    # print(term)
+        saved_term.probability = proba
+    print("{}:{}:\t{}".format(str(scope), str(term), str(proba.value)))
 
-    pickled_term = pickle.dumps(term)
+    pickled_term = pickle.dumps(saved_term)
     pickled_scope = pickle.dumps(scope)
 
     idb.save_term(
         scope.functor,
         scope.arity,
         pickled_scope,
-        term.functor,
-        term.arity,
+        saved_term.functor,
+        saved_term.arity,
         pickled_term,
     )
 

@@ -1,11 +1,5 @@
-:- use_module('../../synthlog/inductive_db.py').
+:- use_module('../../synthlog/inductive_db.pl').
 
-idb(IDB) :- load_inductive_db('db_file.db', IDB).
-:- idb(_).
-
-a:c.
-:- a:A, idb(IDB), save_term(a, A, IDB).
-
-:(a,c).
-
-query(a:c).
+idb(IDB) :- load_prob_inductive_db('db_file.db', IDB).
+0.9::(:(a,c)).
+query_save_term(a:A, IDB):- a:A, idb(IDB).
