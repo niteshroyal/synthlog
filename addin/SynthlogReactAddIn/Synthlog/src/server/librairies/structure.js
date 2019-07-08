@@ -215,12 +215,19 @@ exports.runScript = function(filename, res) {
                     if (!result_format)
                         theories.add(splits[0]);
                     else {
-                        if (splits[0] == 'theory')
+                        console.log(splits)
+                        if (splits[0] == 'theory') {
                             theories.add(splits[1]);
-                        else if (splits[0] == 'active')
+                            console.log('theory');
+                        }
+                        else if (splits[0] == 'active') {
                             active = splits[1];
-                        else if (splits[0] == 'result')
+                            console.log('active');
+                        }
+                        else if (splits[0] == 'result') {
                             result_output.push(splits[1]);
+                            console.log('result');
+                        }
                     }
                 }
             });
