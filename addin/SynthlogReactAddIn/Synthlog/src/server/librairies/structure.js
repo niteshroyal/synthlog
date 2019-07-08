@@ -44,8 +44,8 @@ function generateCells(cells) {
         for (var i = 0; i < row_number; i++) {
             for (var j = 0; j < column_number; j++) {
                 res.push([
-                    i+cells.firstRow, 
-                    j+cells.firstColumn,
+                    i+cells.firstRow+1, 
+                    j+cells.firstColumn+1,
                     cells.values[i][j],
                 ])
             }
