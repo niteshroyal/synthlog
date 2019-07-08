@@ -11,7 +11,7 @@ from synthlog.keywords import init_cell_pred
 from problog.parser import PrologParser
 from problog.program import ExtendedPrologFactory
 
-from synthlog.predictors.predictors_classes import *
+from synthlog.tasks.predictors import *
 
 logger = init_logger()
 

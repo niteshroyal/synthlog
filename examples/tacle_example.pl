@@ -1,4 +1,4 @@
-:- use_module('../synthlog/spreadsheet.pl').
+%:- use_module('../synthlog/spreadsheet.pl').
 
 magic_cells:X :- load_csv('../data/magic_ice_cream.csv', X).
 % query(magic_cells:_).

@@ -1,20 +1,21 @@
 from __future__ import print_function
 
 import importlib
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import numpy as np
 import pandas as pd
 
 from problog.util import init_logger
-from problog.logic import Term, Object, term2str, unquote
+from problog.logic import Term, Object, Constant, term2str, unquote
 
 from synthlog.mercs.core.MERCS import MERCS
+from synthlog.tasks.base_stored_object import StoredObject, cells_to_matrix
 
 logger = init_logger()
 
 
-class Predictor(ABC):
+class Predictor(StoredObject):
     def __init__(
         self,
         scope=None,
@@ -31,44 +32,12 @@ class Predictor(ABC):
         :param database: The database of Problog
         :param engine: The engine of Problog
         """
-        self.scope = scope
         self.source_columns = source_columns
         self.target_columns = target_columns
 
-        self.database = database
-        self.engine = engine
-
         self.confidence = 0.5
 
-        self.problog_obj = None
-        query_obj = self.get_object_from_db()
-        if query_obj:
-            self.problog_obj = query_obj
-            self.object_from_db = True
-        else:
-            self.problog_obj = Object(self)
-            self.object_from_db = False
-
-    def get_db_result(self):
-        if not self.database or not self.engine:
-            logger.warning(
-                "Could not try to retrieve predictor from db. database and engine should be filled."
-            )
-            return None
-
-        # We try to retrieve the model trained with the same parameters
-        res_predictor_object = [
-            t
-            for t in self.engine.query(
-                self.database, self.get_query_term(), subcall=True
-            )
-        ]
-
-        # If we succeed, we retrieve the previously trained object.
-        # If not, we train a new one
-        for r in res_predictor_object:
-            if self.match_query_res(r):
-                return r
+        super().__init__(scope, database, engine)
 
     def match_query_res(self, r):
         """
@@ -81,15 +50,6 @@ class Predictor(ABC):
             and r[1].functor == self.source_columns
             and r[2].functor == self.target_columns
         )
-
-    def get_query_term(self):
-        """
-        Return the Term that is used to query the database to retrieve the current Predictor object.
-        It is based on the to_term() function and replaces each argument by None (the _ in problog).
-        :return:
-        """
-        own_term = self.to_term()
-        return Term(own_term.functor, *[None] * len(own_term.args))
 
     def get_object_from_db(self):
         res = self.get_db_result()
@@ -109,7 +69,7 @@ class Predictor(ABC):
         )
 
     @abstractmethod
-    def fit(self):
+    def fit(self, table_cell_term_list):
         return NotImplemented
 
     @abstractmethod
@@ -167,21 +127,13 @@ class FitPredictor(Predictor):
             engine=engine,
         )
 
-    def fit(self):
+    def fit(self, table_cell_term_list):
         """
         If a predictor object is matched on the database, does nothing.
         Else, learn the predictor model on scope. It uses source_columns to predict target_columns and stores the model in Problog database.
         """
         # If the object was not retrieved from db, we train the model
         if not self.object_from_db:
-            table_cell_term_list = [
-                t[1]
-                for t in self.engine.query(
-                    self.database, Term("':'", self.scope, None), subcall=True
-                )
-                if t[1].functor == "table_cell"
-            ]
-
             relevant_table = [
                 t
                 for t in table_cell_term_list
@@ -210,6 +162,50 @@ class FitPredictor(Predictor):
 
             # We add the new predictor in the database to be able to retrieve it in future calls
             self.database.add_fact(self.to_term())
+
+    # def fit(self):
+    #     """
+    #     If a predictor object is matched on the database, does nothing.
+    #     Else, learn the predictor model on scope. It uses source_columns to predict target_columns and stores the model in Problog database.
+    #     """
+    #     # If the object was not retrieved from db, we train the model
+    #     if not self.object_from_db:
+    #         table_cell_term_list = [
+    #             t[1]
+    #             for t in self.engine.query(
+    #                 self.database, Term("':'", self.scope, None), subcall=True
+    #             )
+    #             if t[1].functor == "table_cell"
+    #         ]
+    #
+    #         relevant_table = [
+    #             t
+    #             for t in table_cell_term_list
+    #             if t.args[0] == self.target_columns[0].args[0]
+    #         ]
+    #
+    #         matrix = cells_to_matrix(relevant_table)
+    #
+    #         src_cols = [s.args[1].value for s in self.source_columns]
+    #         tgt_cols = [s.args[1].value for s in self.target_columns]
+    #
+    #         # If target is an object, we try to convert it to different types
+    #         fit_target = matrix[:, tgt_cols]
+    #         if matrix[:, tgt_cols].dtype == np.object:
+    #             try:
+    #                 fit_target = matrix[:, tgt_cols].astype(int)
+    #             except:
+    #                 try:
+    #                     fit_target = matrix[:, tgt_cols].astype(float)
+    #                 except:
+    #                     try:
+    #                         fit_target = matrix[:, tgt_cols].astype(str)
+    #                     except:
+    #                         fit_target = matrix[:, tgt_cols].astype(np.object)
+    #         self.model.fit(matrix[:, src_cols], fit_target)
+    #
+    #         # We add the new predictor in the database to be able to retrieve it in future calls
+    #         self.database.add_fact(self.to_term())
 
     def predict(self, X):
         return self.model.predict(X)
@@ -488,45 +484,3 @@ class MERCSWhiteBoxPredictor(MERCSPredictor):
             dt_terms.extend(dt_object.output_terms())
 
         return super().output_terms() + dt_terms
-
-
-def cells_to_matrix(cell_term_list):
-    min_y, max_y, min_x, max_x = [None, None, None, None]
-    col_types = {}
-    for cell_term in cell_term_list:
-        y, x = cell_term.args[1].value, cell_term.args[2].value
-        if not x in col_types:
-            col_types[x] = []
-        col_types[x].append(type(cell_term.args[3].value))
-
-        if min_y is None or y < min_y:
-            min_y = y
-        if max_y is None or y > max_y:
-            max_y = y
-        if min_x is None or x < min_x:
-            min_x = x
-        if max_x is None or x > max_x:
-            max_x = x
-    row = max_y
-    column = max_x
-
-    # Ideally, we would like the right datatype for each cell instead of np.object.
-    # This is not possible with numpy currently
-    matrix = np.empty(shape=(row, column), dtype=np.object)
-
-    for cell_term in cell_term_list:
-        matrix[
-            cell_term.args[1].value - 1, cell_term.args[2].value - 1
-        ] = cell_term.args[3].value
-
-    # matrix = np.array(
-    #     matrix,
-    #     dtype=[
-    #         (str(i), np.object)
-    #         if len(set(col_types[i])) != 1
-    #         else (str(i), np.dtype(list(set(col_types[i]))[0]))
-    #         for i in range(min_x, max_x + 1)
-    #     ],
-    # )
-
-    return matrix

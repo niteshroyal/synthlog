@@ -1,4 +1,4 @@
-:- use_module('../synthlog/spreadsheet.py').
+%:- use_module('../synthlog/spreadsheet.py').
 :- use_module('../synthlog/countor_wrapper.py').
 
 nurse_cells:X :- load_csv('../data/nurse_new_format.csv', X).
