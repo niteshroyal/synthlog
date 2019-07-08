@@ -1,4 +1,2 @@
-idb(IDB) :- excel:idb(X), load_inductive_db(X, IDB). 
-init:X :- excel:workbook_path(Path), load_spreadsheet(Path, X). 
-:- init:X, idb(IDB), save_term(init, X, IDB). 
-query(init:_).
+idb(IDB) :- excel(parameters):idb(X), load_prob_inductive_db(X, IDB). 
+query_save_term(Scope, excel(data):X, IDB) :- excel(parameters):scope(Scope), idb(IDB). 

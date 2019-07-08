@@ -100,7 +100,7 @@ exports.generateParameters = function(parameters) {
             }
         }
     }
-    terms += "\nquery(excel:cell(1,1,_))."
+    // terms += "\nquery(excel:cell(1,1,_))."
     FileSystem.writeFileSync(Path.resolve(homedir, 'parameters.pl'), terms);
 }
 
@@ -114,7 +114,7 @@ function generateTermStrings(key, values, fromhome=false, types=[]) {
             a = arg.toString();
             if (fromhome) a = "'" + Path.resolve(homedir, a) + "'";
             // We add a quote if the argument is a string (except for the fist 2 arguments, that are x and y coordinates)
-            if (types){
+            if (types.length > 0){
                 if(types[i] == "String" && j > 1)
                     a = "'" + a + "'";
                 // If it's an empty cell, we don't add it
@@ -124,8 +124,11 @@ function generateTermStrings(key, values, fromhome=false, types=[]) {
             args += a;
         });
         if (args != "") args = "(" + args + ")";
-        if(addTerm)
-            terms += "excel:" + key + args + ". ";
+        if(addTerm) {
+            // We consider that a data member is a term with a type
+            var scope = types.length > 0 ? '(data)' : '(parameters)';
+            terms += "excel" + scope + ":" + key + args + ". ";
+        }
     });
     return terms;
 }
@@ -198,14 +201,38 @@ exports.runScript = function(filename, res) {
         }
         else {
             console.log("Results: " + results);
+            var active = null;
             var theories = new Set();
+            var result_format = false;
+            var result_output = [];
             results.forEach(element => {
                 var splits = element.split(':');
-                if (splits.length > 2) theories.add(splits[0]);
+                if (splits.length > 2) {
+                    if (!result_format && ['result', 'theory', 'active'].includes(splits[0])) {
+                        result_format = true;
+                        theories = new Set();
+                    }
+                    if (!result_format)
+                        theories.add(splits[0]);
+                    else {
+                        if (splits[0] == 'theory')
+                            theories.add(splits[1]);
+                        else if (splits[0] == 'active')
+                            active = splits[1];
+                        else if (splits[0] == 'result')
+                            result_output.push(splits[1]);
+                    }
+                }
             });
             res.setHeader('Content-Type', 'application/json');
             console.log("Theories: " + Array.from(theories));
-            res.send({output: results, theories: Array.from(theories)});
+            var output = {
+                output: result_format? result_output:results,
+                theories: Array.from(theories)
+            }
+            if (active != null)
+                output.active = active;
+            res.send(output);
         }
     });
 }
