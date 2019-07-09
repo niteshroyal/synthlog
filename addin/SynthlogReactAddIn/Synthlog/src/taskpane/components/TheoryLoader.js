@@ -27,7 +27,7 @@ export default class TheoryLoader extends React.Component {
             this.parent.runSynthlog(parameters)
             .then(function(json) {
                 that.setState({
-                    click: 'json: ' + json.active
+                    click: 'json: ' + json.output
                 })
             })
             .catch(err => that.setState({click: 'Nope'}));

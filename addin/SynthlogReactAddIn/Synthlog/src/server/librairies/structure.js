@@ -206,7 +206,7 @@ exports.runScript = function(filename, res) {
             var result_format = false;
             var result_output = [];
             results.forEach(element => {
-                var splits = element.split(':');
+                var splits = element.replace(/\s\s+/g,'').split(':');
                 if (splits.length > 2) {
                     if (!result_format && ['result', 'theory', 'active'].includes(splits[0])) {
                         result_format = true;
