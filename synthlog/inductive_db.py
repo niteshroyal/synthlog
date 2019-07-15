@@ -35,7 +35,7 @@ logger = logging.getLogger("problog")
 #######################
 
 
-@problog_export("+str", "-term")
+@problog_export("+str")
 def load_inductive_db(filename):
     """
     Load predicates from a database
@@ -56,10 +56,10 @@ def load_inductive_db(filename):
     # Say to Problog engine that if scopes are queried, the inductive database has to be called first
     problog_export_raw("+term", "+term")(idb, funcname="':'", modname=None)
 
-    return Object(idb)
+    return ()
 
 
-@problog_export("+str", "-term")
+@problog_export("+str")
 def load_prob_inductive_db(filename):
     """
     Load predicates from a database (with probabilities on terms)
@@ -81,21 +81,15 @@ def load_prob_inductive_db(filename):
         idb, funcname="'scope_in_database'", modname=None
     )
 
-    return Object(idb)
+    return ()
 
 
-@problog_export("+term", "+term", "+term")
+@problog_export("+term", "+term", "+str")
 def save_term(scope, term, inductive_database):
-    idb = inductive_database.functor
-
-    if not isinstance(idb, InductiveDBWrapper):
-        raise InvalidValue(
-            "The inductive database object has to contain an InductiveDBWrapper."
-        )
 
     pickled_term = pickle.dumps(term)
     pickled_scope = pickle.dumps(scope)
-    idb.save_term(
+    InductiveDBWrapper(inductive_database).save_term(
         scope.functor,
         scope.arity,
         pickled_scope,
@@ -107,16 +101,11 @@ def save_term(scope, term, inductive_database):
     return ()
 
 
-@problog_export("+term", "+term", "+term", "+term")
+@problog_export("+term", "+term", "+term", "+str")
 def save_term(scope, term, proba, inductive_database):
-    idb = inductive_database.functor
 
     if not proba.is_constant():
         raise InvalidValue("The probability needs to be a number")
-    if not isinstance(idb, InductiveDBWrapper):
-        raise InvalidValue(
-            "The inductive database object has to contain an InductiveDBWrapper."
-        )
 
     saved_term = deepcopy(term)
     if proba.value == 1:
@@ -128,7 +117,7 @@ def save_term(scope, term, proba, inductive_database):
     pickled_term = pickle.dumps(saved_term)
     pickled_scope = pickle.dumps(scope)
 
-    idb.save_term(
+    InductiveDBWrapper(inductive_database, True).save_term(
         scope.functor,
         scope.arity,
         pickled_scope,
