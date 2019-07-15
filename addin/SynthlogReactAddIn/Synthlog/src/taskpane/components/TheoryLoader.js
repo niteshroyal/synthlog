@@ -10,6 +10,7 @@ export default class TheoryLoader extends React.Component {
             click: ''
         }
         this.default_active = '';
+        this.parent = null;
     }
 
     itemSelectionHandler = async(event, item) => {
@@ -17,18 +18,35 @@ export default class TheoryLoader extends React.Component {
     }
 
     clickHandler = async() => {
-        this.setState({click: 'clicked'});
+        if (this.parent != null) {
+            var that = this;
+            var parameters = this.parent.generateSynthlogParameters({
+                scope: this.state.active,
+                script: 'builtin/load_active.pl'
+            });
+            this.parent.runSynthlog(parameters)
+            .then(function(json) {
+                that.setState({
+                    click: 'json: ' + json.output
+                })
+            })
+            .catch(err => that.setState({click: 'Nope'}));
+        }
+        else
+            this.setState({click: 'clicked'});
     }
 
     render() {        
         const {
             active,
+            parent,
             theories
         } = this.props;
         if (active && active != this.default_active) {
             this.state.active = active;
             this.default_active = active;
-        }            
+        }       
+        this.parent = parent;
 
         try {
             var items = this.theoriesToItems(theories);
@@ -48,6 +66,7 @@ export default class TheoryLoader extends React.Component {
                         Move
                     </DefaultButton>
                     <p>{this.state.click}</p>
+                    <hr/>
                 </div>
             );
         }

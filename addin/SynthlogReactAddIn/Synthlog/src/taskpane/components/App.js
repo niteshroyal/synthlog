@@ -2,6 +2,7 @@ import * as React from 'react';
 import CheckLabel from './CheckLabel';
 import Progress from './Progress';
 import 'isomorphic-fetch';
+import UserTheorySaver from './UserTheorySaver';
 import TheoryLoader from './TheoryLoader';
 import { PredictionDiv } from './PredictionDiv';
 
@@ -102,12 +103,15 @@ export default class App extends React.Component {
         
         <TheoryLoader
           active={ this.state.active }
+          parent = { this }
           theories={ this.state.theories }
         />
 
         <div>
           <p>{ this.state.debug }</p>
         </div>
+
+        <UserTheorySaver parent={this} />
 
         <PredictionDiv parent={this}/>
       </div>
@@ -122,6 +126,12 @@ export default class App extends React.Component {
     .then(response => response.json())
     .then(json => this.setState(json))
     .catch(e => this.setState({python: false}))
+  }
+
+  generateSynthlogParameters(parameters) {
+    var p = parameters;
+    p.homedir = {idb: "synthlog.db"};
+    return p;
   }
 
   initProblog() {
@@ -141,8 +151,9 @@ export default class App extends React.Component {
   loadTheories(theories, active=false) {
     try {
       if (theories.length > 0) {
+        var merged_theories = Array.from(new Set(this.state.theories.concat(theories)));
         this.setState({
-            theories: theories, 
+            theories: merged_theories, 
             active: theories[0],
             debug: theories[0].label
           });
@@ -154,6 +165,29 @@ export default class App extends React.Component {
   }
 
   runIDBGeneration = async() => {
+    this.saveTheory('init');
+  }
+
+  runSynthlog(parameters) {
+    var that = this;
+    return fetch(`${this.api}/run_synthlog`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(parameters)
+    })
+    .then(response => response.json())
+    .then(function(json) {
+      if (json.theories)
+        that.loadTheories(json.theories, true);
+      return json;
+    })
+    .catch(err => fetch(`${this.api}/log?type=${err.name}&message=${err.message}`))
+  }
+  
+  saveTheory = async(theory) => {
     var that = this;
     try {
       await Excel.run(function(context) {
@@ -163,37 +197,28 @@ export default class App extends React.Component {
         range.load(['rowIndex', 'columnIndex', 'values', 'valueTypes']);
         
         return context.sync()
-          .then(function() {
-            fetch(`${that.api}/run_synthlog`, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                cells: {
-                  firstRow: range.rowIndex,
-                  firstColumn: range.columnIndex, 
-                  values: range.values,
-                  valueTypes: range.valueTypes
-                },
-                homedir: {
-                  idb: "synthlog.db"
-                },
-                script: "builtin/init.pl"
-              })
-            })
-            .then(function(response) {
-              that.setState({idb: true});
-              return response.json();
-            })
-            .then(function(json) {
-              if (json.theories)
-                that.loadTheories(json.theories, true);
-            });
-          });
-        }
-      )
+          .then(
+            function() {
+                return that.generateSynthlogParameters({
+                  cells: {
+                    firstRow: range.rowIndex,
+                    firstColumn: range.columnIndex, 
+                    values: range.values,
+                    valueTypes: range.valueTypes
+                  },
+                  scope: theory,
+                  script: "builtin/init.pl"
+                });
+            }
+          )
+          .then(function(parameters) {
+            that.runSynthlog(parameters)
+            .then(
+              // Should only by done the first time
+              that.setState({idb: true})
+            )
+          })
+      })
     }
     catch(err) {
       fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
