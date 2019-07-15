@@ -128,6 +128,36 @@ export default class App extends React.Component {
     .catch(e => this.setState({python: false}))
   }
 
+  clearSpreadsheet() {
+      return Excel.run(function(context) {
+          const sheets = context.workbook.worksheets;
+          const firstSheet = sheets.getActiveWorksheet();
+          var range = firstSheet.getUsedRange();
+          range.clear();
+          return context.sync();
+      })
+  }
+
+  fillSpreadsheet = async(cells) => {
+      var that = this;
+      try {
+        await Excel.run(function(context) {
+          const sheets = context.workbook.worksheets;
+          const firstSheet = sheets.getActiveWorksheet();
+          cells.forEach(element =>
+            firstSheet.getCell(element[0],element[1]).values = [[element[2]]]
+          );
+          return context.sync();
+        })
+        .catch(function(err) {
+          fetch(`${that.api}/log?type=${err.name}&message=${err.message}`);
+        })
+      }
+      catch(err) {
+        fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
+      }
+  }
+
   generateSynthlogParameters(parameters) {
     var p = parameters;
     p.homedir = {idb: "synthlog.db"};

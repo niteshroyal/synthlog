@@ -44,8 +44,8 @@ function generateCells(cells) {
         for (var i = 0; i < row_number; i++) {
             for (var j = 0; j < column_number; j++) {
                 res.push([
-                    i+cells.firstRow, 
-                    j+cells.firstColumn,
+                    i+cells.firstRow+1, 
+                    j+cells.firstColumn+1,
                     cells.values[i][j],
                 ])
             }
@@ -133,6 +133,28 @@ function generateTermStrings(key, values, fromhome=false, types=[]) {
     return terms;
 }
 
+function importSynthlog() {
+    const path = Path.resolve(homedir, "synthlog");
+    var zip = AdmZip(Path.resolve(__dirname, "..", "resources", "synthlog.zip"));
+    zip.extractAllToAsync(path, true);
+}
+
+function init_builtin() {
+    var builtin_path = Path.resolve(homedir, "builtin");
+    createDir(builtin_path);
+
+    var builtin_resource_path = Path.resolve(__dirname, "..", "resources", "builtin");
+    var items = FileSystem.readdirSync(builtin_resource_path);
+
+    items.forEach(function(item) {
+        var resource_target_path = Path.resolve(builtin_path, item);
+        if (!FileSystem.existsSync(resource_target_path)) {
+            var resource_path = Path.resolve(builtin_resource_path, item);
+            FileSystem.copyFileSync(resource_path, resource_target_path);
+        }
+    });
+}
+
 exports.init_problog = function(res) {
     var problog_path = Path.resolve(homedir, "problog");
     if (!FileSystem.existsSync(problog_path))
@@ -150,16 +172,7 @@ exports.init = function(res) {
         var synthlog_path = Path.resolve(homedir, "synthlog");
         if (!FileSystem.existsSync(synthlog_path))
             importSynthlog();
-
-        var builtin_path = Path.resolve(homedir, "builtin");
-        createDir(builtin_path);
-
-        var init_path = Path.resolve(builtin_path, "init.pl");
-        if (!FileSystem.existsSync(init_path)) {
-            resource_init = Path.resolve(__dirname, "..", "resources", "init.pl");
-            FileSystem.copyFileSync(resource_init, init_path);
-        }
-
+        init_builtin();        
         
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: true }));
@@ -170,12 +183,6 @@ exports.init = function(res) {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: false }));
     }
-}
-
-function importSynthlog() {
-    const path = Path.resolve(homedir, "synthlog");
-    var zip = AdmZip(Path.resolve(__dirname, "..", "resources", "synthlog.zip"));
-    zip.extractAllToAsync(path, true);
 }
 
 exports.runScript = function(filename, res) {
@@ -206,7 +213,7 @@ exports.runScript = function(filename, res) {
             var result_format = false;
             var result_output = [];
             results.forEach(element => {
-                var splits = element.replace(/\s\s+/g,'').split(':');
+                var splits = element.replace(/\s/g,'').split(':');
                 if (splits.length > 2) {
                     if (!result_format && ['result', 'theory', 'active'].includes(splits[0])) {
                         result_format = true;

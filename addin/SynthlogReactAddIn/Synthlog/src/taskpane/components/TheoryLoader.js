@@ -26,10 +26,18 @@ export default class TheoryLoader extends React.Component {
             });
             this.parent.runSynthlog(parameters)
             .then(function(json) {
-                that.setState({
-                    click: 'json: ' + json.output
-                })
-            })
+                    if (json.output) {
+                        try {
+                            that.parent.clearSpreadsheet();
+                            var cells = that.parseResult(json.output);
+                            that.parent.fillSpreadsheet(cells);
+                        }
+                        catch(err) {
+                            that.setState({click: err.message});
+                        }
+                    }
+                }
+            )
             .catch(err => that.setState({click: 'Nope'}));
         }
         else
@@ -73,6 +81,16 @@ export default class TheoryLoader extends React.Component {
         catch(err) {
             return (<p>{err.message}</p>)
         }
+    }
+
+    parseResult(result) {
+        var cells = []
+        var regex = /cell\(([0-9]+),([0-9]+),(.+)\)/;
+        result.forEach(function(element) {
+            var m = element.match(regex);
+            cells.push([parseInt(m[1]), parseInt(m[2]), m[3].replace(/'/g, '')]);
+        });
+        return cells;
     }
 
     theoriesToItems(theories) {
