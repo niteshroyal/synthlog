@@ -144,8 +144,15 @@ export default class App extends React.Component {
         await Excel.run(function(context) {
           const sheets = context.workbook.worksheets;
           const firstSheet = sheets.getActiveWorksheet();
-          cells.forEach(element =>
-            firstSheet.getCell(element[0],element[1]).values = [[element[2]]]
+          cells.forEach(function(element){ 
+            firstSheet.getCell(element[0],element[1]).values = [[element[2]]];
+            if(element[3] > 0.5 && element[3] < 0.9)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "orange";
+            else if(element[3] <0.5)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "red";
+            else
+            firstSheet.getCell(element[0],element[1]).format.fill.color = "green";
+          }
           );
           return context.sync();
         })

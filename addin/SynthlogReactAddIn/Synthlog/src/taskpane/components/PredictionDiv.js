@@ -106,7 +106,7 @@ export class PredictionDiv extends React.Component {
          })
     }
 
-    predict() {
+    predict = async() => {
     //     var all_values = [];
     //     var row_lengths = this.features.values.map(row => row.length);
     //     var max_row_lengths = Math.max(...row_lengths);
@@ -125,6 +125,7 @@ export class PredictionDiv extends React.Component {
 
     //     this.setState({ message: all_values});
         try{
+            var that = this;
         var parameters = {
             scope: "init",
             script: "builtin/prediction.pl",
@@ -134,11 +135,39 @@ export class PredictionDiv extends React.Component {
             pred_column: this.ranges_to_pred.columns.reduce((acc, val) => acc.concat(val), []).map(x => [x]),
           };
         parameters = this.parent.generateSynthlogParameters(parameters);
-        this.parent.runSynthlog(parameters);
+        this.parent.runSynthlog(parameters).then(function(json) {
+            fetch(`https://localhost:3001/api/log?type=test&message=${json.output}`);
+            if (json.output) {
+                try {
+                    that.parent.clearSpreadsheet();
+                    var cells = that.parseResult(json.output);
+                    that.parent.fillSpreadsheet(cells);
+                }
+                catch(err) {
+                    fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`);
+                }
+            }
+        }
+    )
         }
         catch(err){
             fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`);
         }
 
+    }
+
+    parseResult(result) {
+        var cells = []
+        var regex = /table_cell\(('.+?'),([0-9]+),([0-9]+),(.+?)\):(.+)/;
+        // add proba
+        result.forEach(function(element) {
+            var m = element.match(regex);
+            fetch(`https://localhost:3001/api/log?type=reg&message=${m}`)
+            fetch(`https://localhost:3001/api/log?type=reg&message=${element}`)
+            if(m)
+                cells.push([parseInt(m[2]), parseInt(m[3]), m[4].replace(/'/g, ''), parseFloat(m[5])]);
+        });
+        //this.setState({message: cells});
+        return cells;
     }
 }
