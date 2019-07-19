@@ -127,7 +127,7 @@ export class PredictionDiv extends React.Component {
         try{
             var that = this;
         var parameters = {
-            scope: "init",
+            scope: this.parent.state.active,
             script: "builtin/prediction.pl",
             train_row: this.features.rows.reduce((acc, val) => acc.concat(val), []).map(x => [x]),
             train_column: this.features.columns.reduce((acc, val) => acc.concat(val), []).map(x => [x]),
@@ -136,10 +136,10 @@ export class PredictionDiv extends React.Component {
           };
         parameters = this.parent.generateSynthlogParameters(parameters);
         this.parent.runSynthlog(parameters).then(function(json) {
-            fetch(`https://localhost:3001/api/log?type=test&message=${json.output}`);
+            // fetch(`https://localhost:3001/api/log?type=test&message=${json.output}`);
             if (json.output) {
                 try {
-                    that.parent.clearSpreadsheet();
+                    // that.parent.clearSpreadsheet();
                     var cells = that.parseResult(json.output);
                     that.parent.fillSpreadsheet(cells);
                 }
@@ -159,15 +159,32 @@ export class PredictionDiv extends React.Component {
     parseResult(result) {
         var cells = []
         var regex = /table_cell\(('.+?'),([0-9]+),([0-9]+),(.+?)\):(.+)/;
+        var that = this;
+
+        var flattened_pred_rows = this.ranges_to_pred.rows.reduce((acc, val) => acc.concat(val), []);
+        var flattened_pred_cols = this.ranges_to_pred.columns.reduce((acc, val) => acc.concat(val), []);
+
+        // fetch(`https://localhost:3001/api/log?type=base&message=${flattened_pred_rows}`);
+        // fetch(`https://localhost:3001/api/log?type=base&message=${flattened_pred_cols}`);
+
         // add proba
         result.forEach(function(element) {
             var m = element.match(regex);
-            fetch(`https://localhost:3001/api/log?type=reg&message=${m}`)
-            fetch(`https://localhost:3001/api/log?type=reg&message=${element}`)
-            if(m)
-                cells.push([parseInt(m[2]), parseInt(m[3]), m[4].replace(/'/g, ''), parseFloat(m[5])]);
+            fetch(`https://localhost:3001/api/log?type=reg&message=${m}`);
+            // fetch(`https://localhost:3001/api/log?type=reg&message=${element}`)
+            if(m){
+                // Results from Synthlog are 1,1 based, and only contained rows and columns specified from ranges_to_pred.
+                // The next 2 lines perform the mapping between the SynthLog indices and the Excel indices                
+                var row = flattened_pred_rows[parseInt(m[2])-1];
+                var col = flattened_pred_cols[parseInt(m[3])-1];
+
+                // fetch(`https://localhost:3001/api/log?type=it&message=${row}`);
+                // fetch(`https://localhost:3001/api/log?type=it&message=${col}`);
+
+                cells.push([row, col, m[4].replace(/'/g, ''), parseFloat(m[5])]);
+            }
         });
-        //this.setState({message: cells});
+        this.setState({message: cells});
         return cells;
     }
 }

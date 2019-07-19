@@ -146,12 +146,16 @@ export default class App extends React.Component {
           const firstSheet = sheets.getActiveWorksheet();
           cells.forEach(function(element){ 
             firstSheet.getCell(element[0],element[1]).values = [[element[2]]];
-            if(element[3] > 0.5 && element[3] < 0.9)
-              firstSheet.getCell(element[0],element[1]).format.fill.color = "orange";
-            else if(element[3] <0.5)
-              firstSheet.getCell(element[0],element[1]).format.fill.color = "red";
+            if(element[3] > 0.9 && element[3] < 1)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#006837";
+            else if(element[3] > 0.8 && element[3] < 0.9)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#31a354";
+            else if(element[3] > 0.7 && element[3] < 0.8)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#78c679";
+            else if(element[3] > 0.6 && element[3] < 0.7)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#c2e699";
             else
-            firstSheet.getCell(element[0],element[1]).format.fill.color = "green";
+            firstSheet.getCell(element[0],element[1]).format.fill.color = "#ffffcc";
           }
           );
           return context.sync();
