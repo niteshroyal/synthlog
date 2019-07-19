@@ -397,9 +397,9 @@ def scope_minus(scope1, scope2, **kwargs):
 def cells_to_matrix(cell_terms):
     return convert_to_matrix(
         cell_terms,
-        lambda t: t.args[0].functor,
-        lambda t: t.args[1].functor,
-        lambda t: t.args[2].functor,
+        lambda t: t.args[0].functor if isinstance(t, Term) else t.args[0],
+        lambda t: t.args[1].functor if isinstance(t, Term) else t.args[1],
+        lambda t: t.args[2].functor if isinstance(t, Term) else t.args[2],
     )
 
 
