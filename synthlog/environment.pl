@@ -7,7 +7,7 @@
 :- use_module('transformers.pl').
 :- use_module('../synthlog/utils.py').
 :- use_module('predict.pl').
-:- use_module('clause.pl').
+%:- use_module('clause.pl').
 list(X,X).
 
 wrong :- S:wrong.
