@@ -24,6 +24,14 @@ from tacle import tables_from_cells, learn_from_csv, learn_from_cells, Constrain
 from tacle.core.template import AllDifferent
 from tacle.indexing import Orientation, Table, Range
 
+# This is for the excel add-in, to be able to use synthlog
+# It works because spreadsheet.py is the first import
+# TODO: Do something smarter and more general instead
+import sys
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if not os.path.abspath(parent_dir) in sys.path:
+	sys.path.append(os.path.abspath(parent_dir))
+
 from synthlog.keywords import (
     init_cell,
     init_table,
@@ -231,7 +239,6 @@ def detect_cell_tables(cell_term_list, **kwargs):
     # for r in res_predictor_object:
     #     if r[0].functor == hashfunc(cell_term_list):
     #         return r[1].functor
-
     matrix = cells_to_matrix(cell_term_list)
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
@@ -390,9 +397,9 @@ def scope_minus(scope1, scope2, **kwargs):
 def cells_to_matrix(cell_terms):
     return convert_to_matrix(
         cell_terms,
-        lambda t: t.args[0].value,
-        lambda t: t.args[1].value,
-        lambda t: t.args[2].value,
+        lambda t: t.args[0].functor if isinstance(t, Term) else t.args[0],
+        lambda t: t.args[1].functor if isinstance(t, Term) else t.args[1],
+        lambda t: t.args[2].functor if isinstance(t, Term) else t.args[2],
     )
 
 

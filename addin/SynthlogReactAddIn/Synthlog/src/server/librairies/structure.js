@@ -44,8 +44,8 @@ function generateCells(cells) {
         for (var i = 0; i < row_number; i++) {
             for (var j = 0; j < column_number; j++) {
                 res.push([
-                    i+cells.firstRow, 
-                    j+cells.firstColumn,
+                    i+cells.firstRow+1, 
+                    j+cells.firstColumn+1,
                     cells.values[i][j],
                 ])
             }
@@ -100,7 +100,7 @@ exports.generateParameters = function(parameters) {
             }
         }
     }
-    terms += "\nquery(excel:cell(1,1,_))."
+    // terms += "\nquery(excel:cell(1,1,_))."
     FileSystem.writeFileSync(Path.resolve(homedir, 'parameters.pl'), terms);
 }
 
@@ -114,7 +114,7 @@ function generateTermStrings(key, values, fromhome=false, types=[]) {
             a = arg.toString();
             if (fromhome) a = "'" + Path.resolve(homedir, a) + "'";
             // We add a quote if the argument is a string (except for the fist 2 arguments, that are x and y coordinates)
-            if (types){
+            if (types.length > 0){
                 if(types[i] == "String" && j > 1)
                     a = "'" + a + "'";
                 // If it's an empty cell, we don't add it
@@ -124,10 +124,35 @@ function generateTermStrings(key, values, fromhome=false, types=[]) {
             args += a;
         });
         if (args != "") args = "(" + args + ")";
-        if(addTerm)
-            terms += "excel:" + key + args + ". ";
+        if(addTerm) {
+            // We consider that a data member is a term with a type
+            var scope = types.length > 0 ? '(data)' : '(parameters)';
+            terms += "excel" + scope + ":" + key + args + ". ";
+        }
     });
     return terms;
+}
+
+function importSynthlog() {
+    const path = Path.resolve(homedir, "synthlog");
+    var zip = AdmZip(Path.resolve(__dirname, "..", "resources", "synthlog.zip"));
+    zip.extractAllToAsync(path, true);
+}
+
+function init_builtin() {
+    var builtin_path = Path.resolve(homedir, "builtin");
+    createDir(builtin_path);
+
+    var builtin_resource_path = Path.resolve(__dirname, "..", "resources", "builtin");
+    var items = FileSystem.readdirSync(builtin_resource_path);
+
+    items.forEach(function(item) {
+        var resource_target_path = Path.resolve(builtin_path, item);
+        if (!FileSystem.existsSync(resource_target_path)) {
+            var resource_path = Path.resolve(builtin_resource_path, item);
+            FileSystem.copyFileSync(resource_path, resource_target_path);
+        }
+    });
 }
 
 exports.init_problog = function(res) {
@@ -147,16 +172,7 @@ exports.init = function(res) {
         var synthlog_path = Path.resolve(homedir, "synthlog");
         if (!FileSystem.existsSync(synthlog_path))
             importSynthlog();
-
-        var builtin_path = Path.resolve(homedir, "builtin");
-        createDir(builtin_path);
-
-        var init_path = Path.resolve(builtin_path, "init.pl");
-        if (!FileSystem.existsSync(init_path)) {
-            resource_init = Path.resolve(__dirname, "..", "resources", "init.pl");
-            FileSystem.copyFileSync(resource_init, init_path);
-        }
-
+        init_builtin();        
         
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: true }));
@@ -167,12 +183,6 @@ exports.init = function(res) {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: false }));
     }
-}
-
-function importSynthlog() {
-    const path = Path.resolve(homedir, "synthlog");
-    var zip = AdmZip(Path.resolve(__dirname, "..", "resources", "synthlog.zip"));
-    zip.extractAllToAsync(path, true);
 }
 
 exports.runScript = function(filename, res) {
@@ -198,14 +208,45 @@ exports.runScript = function(filename, res) {
         }
         else {
             console.log("Results: " + results);
+            var active = null;
             var theories = new Set();
+            var result_format = false;
+            var result_output = [];
             results.forEach(element => {
-                var splits = element.split(':');
-                if (splits.length > 2) theories.add(splits[0]);
+                var splits = element.replace(/\s/g,'').split(':');
+                if (splits.length > 2) {
+                    if (!result_format && ['result', 'theory', 'active'].includes(splits[0])) {
+                        result_format = true;
+                        theories = new Set();
+                    }
+                    if (!result_format)
+                        theories.add(splits[0]);
+                    else {
+                        console.log(splits)
+                        if (splits[0] == 'theory') {
+                            theories.add(splits[1]);
+                            console.log('theory');
+                        }
+                        else if (splits[0] == 'active') {
+                            active = splits[1];
+                            console.log('active');
+                        }
+                        else if (splits[0] == 'result') {
+                            result_output.push(splits[1]);
+                            console.log('result');
+                        }
+                    }
+                }
             });
             res.setHeader('Content-Type', 'application/json');
             console.log("Theories: " + Array.from(theories));
-            res.send({output: results, theories: Array.from(theories)});
+            var output = {
+                output: result_format? result_output:results,
+                theories: Array.from(theories)
+            }
+            if (active != null)
+                output.active = active;
+            res.send(output);
         }
     });
 }

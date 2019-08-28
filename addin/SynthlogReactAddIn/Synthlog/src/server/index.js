@@ -13,6 +13,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // app.use(pino);
 
 app.get('/api/init_backend', (req, res) => {
+    console.log("init!")
     structure.init(res);
 });
 

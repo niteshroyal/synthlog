@@ -2,6 +2,7 @@ import * as React from 'react';
 import CheckLabel from './CheckLabel';
 import Progress from './Progress';
 import 'isomorphic-fetch';
+import UserTheorySaver from './UserTheorySaver';
 import TheoryLoader from './TheoryLoader';
 import { PredictionDiv } from './PredictionDiv';
 
@@ -102,12 +103,15 @@ export default class App extends React.Component {
         
         <TheoryLoader
           active={ this.state.active }
+          parent = { this }
           theories={ this.state.theories }
         />
 
         <div>
           <p>{ this.state.debug }</p>
         </div>
+
+        <UserTheorySaver parent={this} />
 
         <PredictionDiv parent={this}/>
       </div>
@@ -122,6 +126,53 @@ export default class App extends React.Component {
     .then(response => response.json())
     .then(json => this.setState(json))
     .catch(e => this.setState({python: false}))
+  }
+
+  clearSpreadsheet() {
+      return Excel.run(function(context) {
+          const sheets = context.workbook.worksheets;
+          const firstSheet = sheets.getActiveWorksheet();
+          var range = firstSheet.getUsedRange();
+          range.clear();
+          return context.sync();
+      })
+  }
+
+  fillSpreadsheet = async(cells) => {
+      var that = this;
+      try {
+        await Excel.run(function(context) {
+          const sheets = context.workbook.worksheets;
+          const firstSheet = sheets.getActiveWorksheet();
+          cells.forEach(function(element){ 
+            firstSheet.getCell(element[0],element[1]).values = [[element[2]]];
+            if(element[3] > 0.9 && element[3] < 1)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#006837";
+            else if(element[3] > 0.8 && element[3] < 0.9)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#31a354";
+            else if(element[3] > 0.7 && element[3] < 0.8)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#78c679";
+            else if(element[3] > 0.6 && element[3] < 0.7)
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#c2e699";
+            else
+            firstSheet.getCell(element[0],element[1]).format.fill.color = "#ffffcc";
+          }
+          );
+          return context.sync();
+        })
+        .catch(function(err) {
+          fetch(`${that.api}/log?type=${err.name}&message=${err.message}`);
+        })
+      }
+      catch(err) {
+        fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
+      }
+  }
+
+  generateSynthlogParameters(parameters) {
+    var p = parameters;
+    p.homedir = {idb: "synthlog.db"};
+    return p;
   }
 
   initProblog() {
@@ -141,8 +192,9 @@ export default class App extends React.Component {
   loadTheories(theories, active=false) {
     try {
       if (theories.length > 0) {
+        var merged_theories = Array.from(new Set(this.state.theories.concat(theories)));
         this.setState({
-            theories: theories, 
+            theories: merged_theories, 
             active: theories[0],
             debug: theories[0].label
           });
@@ -154,6 +206,29 @@ export default class App extends React.Component {
   }
 
   runIDBGeneration = async() => {
+    this.saveTheory('init');
+  }
+
+  runSynthlog(parameters) {
+    var that = this;
+    return fetch(`${this.api}/run_synthlog`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(parameters)
+    })
+    .then(response => response.json())
+    .then(function(json) {
+      if (json.theories)
+        that.loadTheories(json.theories, true);
+      return json;
+    })
+    .catch(err => fetch(`${this.api}/log?type=${err.name}&message=${err.message}`))
+  }
+  
+  saveTheory = async(theory) => {
     var that = this;
     try {
       await Excel.run(function(context) {
@@ -163,37 +238,28 @@ export default class App extends React.Component {
         range.load(['rowIndex', 'columnIndex', 'values', 'valueTypes']);
         
         return context.sync()
-          .then(function() {
-            fetch(`${that.api}/run_synthlog`, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                cells: {
-                  firstRow: range.rowIndex,
-                  firstColumn: range.columnIndex, 
-                  values: range.values,
-                  valueTypes: range.valueTypes
-                },
-                homedir: {
-                  idb: "synthlog.db"
-                },
-                script: "builtin/init.pl"
-              })
-            })
-            .then(function(response) {
-              that.setState({idb: true});
-              return response.json();
-            })
-            .then(function(json) {
-              if (json.theories)
-                that.loadTheories(json.theories, true);
-            });
-          });
-        }
-      )
+          .then(
+            function() {
+                return that.generateSynthlogParameters({
+                  cells: {
+                    firstRow: range.rowIndex,
+                    firstColumn: range.columnIndex, 
+                    values: range.values,
+                    valueTypes: range.valueTypes
+                  },
+                  scope: theory,
+                  script: "builtin/init.pl"
+                });
+            }
+          )
+          .then(function(parameters) {
+            that.runSynthlog(parameters)
+            .then(
+              // Should only by done the first time
+              that.setState({idb: true})
+            )
+          })
+      })
     }
     catch(err) {
       fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
