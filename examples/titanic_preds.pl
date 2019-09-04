@@ -7,7 +7,7 @@
 :- use_module('../synthlog/transformers.pl').
 :- use_module('../synthlog/utils.py').
 :- use_module('../synthlog/predict.pl').
-:- use_module('../synthlog/clause.pl').
+%:- use_module('../synthlog/clause.pl').
 list(X,X).
 
 wrong :- S:wrong.
@@ -35,6 +35,6 @@ titanic_final_pred:X :- titanic_constraints:X.
 titanic_final_pred:table_cell('T1',X, 7, V) :- titanic_preds:cell_pred(X,1,V,_).
 titanic_final_pred:table_cell('T1',X, Y, V) :- test_tables:table_cell('T1', X, Y, V).
 
-%query(train_tables:table(_,_,_,_,_)).
-query(titanic_final_pred:_).
+query(train_tables:table(_,_,_,_,_)).
+%query(titanic_preds:_).
 

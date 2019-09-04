@@ -8,3 +8,5 @@ wrong :- train_tables:table(T, _, _, MaxX, MaxY), between(1, MaxX, X), between(1
 
 detect_tables(Scope, Term) :- findall((P::cell(X,Y,Z)), subquery(Scope:cell(X,Y,Z), P), List), detect_cell_tables(List, Term).
 %evidence(ens_true).
+
+%:- findall((P::X), (subquery(Scope:X, P), X=table_cell(_,_,_,_)), L), add_annotated_disj().

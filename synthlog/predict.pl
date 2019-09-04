@@ -1,5 +1,4 @@
 :- use_module('predict.py').
-Prob::predict(S, Pred, C, X) :- predict(S, Pred, C, X, Prob).
 
 dummyblablascope:blablbadummyterm. % This is to avoid errors when including this file in problog program with no scope
 
@@ -15,3 +14,4 @@ decision_tree(Scope, Source, Target, Y) :- findall((P::X), (subquery(Scope:X, P)
 kmeans(Scope, Source, Y) :- findall((P::X), (subquery(Scope:X, P), X=table_cell(_,_,_,_)), L), kmeans(Scope, Source, L, Y).
 
 predict(Scope, Pred, Cols, Y, Prob) :- findall((P::X), (subquery(Scope:X, P), X=table_cell(_,_,_,_)), L), predict(Scope, Pred, Cols, L, Y, Prob).
+Prob::predict(S, Pred, C, X) :- predict(S, Pred, C, X, Prob).

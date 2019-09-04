@@ -278,6 +278,9 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
     if isinstance(clf, Cluster):
         pred_name = "clustering"
 
+    engine = kwargs["engine"]
+    database = kwargs["database"]
+
     prediction_term_3 = Term(
         pred_name, Object(scope), predictor, Object(source_columns)
     )
@@ -305,24 +308,28 @@ def predict(scope, predictor, source_columns, table_cell_term_list, **kwargs):
             n_cols = 1
 
         cell_pred_terms = []
-        for r, cl, c in product(range(n_rows), range(n_classes), range(n_cols)):
-            if n_cols > 1:
-                proba = y_prob[r, cl, c]
-            else:
-                proba = y_prob[r, cl]
+        for r, c in product(range(n_rows), range(n_cols)):
+            annotated_terms = []
+            for cl in range(n_classes):
+                if n_cols > 1:
+                    proba = y_prob[r, cl, c]
+                else:
+                    proba = y_prob[r, cl]
 
-            if isinstance(clf, Cluster):
-                class_name = cl
-            else:
-                class_name = clf.model.classes_[cl].item()
+                if isinstance(clf, Cluster):
+                    class_name = cl
+                else:
+                    class_name = clf.model.classes_[cl].item()
 
-            cell_pred_terms.append(
-                (
-                    init_cell_pred(r + 1, c + 1, class_name, predictor),
-                    # init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], prediction_term_3),
-                    Constant(proba),
+                added_term = init_cell_pred(r + 1, c + 1, class_name, predictor)
+
+                cell_pred_terms.append(
+                    (
+                        added_term,
+                        # init_cell_pred(r + 1, c + 1, clf.model.classes_[cl], prediction_term_3),
+                        Constant(proba),
+                    )
                 )
-            )
     # If predict_proba is not found, we use the non probabilistic prediction
     except AttributeError:
         y_pred = clf.predict(matrix[:, src_cols])

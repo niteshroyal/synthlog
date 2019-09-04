@@ -28,9 +28,10 @@ from tacle.indexing import Orientation, Table, Range
 # It works because spreadsheet.py is the first import
 # TODO: Do something smarter and more general instead
 import sys
+
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if not os.path.abspath(parent_dir) in sys.path:
-	sys.path.append(os.path.abspath(parent_dir))
+    sys.path.append(os.path.abspath(parent_dir))
 
 from synthlog.keywords import (
     init_cell,

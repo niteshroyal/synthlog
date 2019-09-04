@@ -7,7 +7,7 @@
 :- use_module('../synthlog/transformers.pl').
 :- use_module('../synthlog/utils.py').
 :- use_module('../synthlog/predict.pl').
-:- use_module('../synthlog/clause.pl').
+%:- use_module('../synthlog/clause.pl').
 list(X,X).
 
 wrong :- S:wrong.
@@ -31,16 +31,16 @@ magic_predict:X :- magic_models:predictor(Y),
             magic_models:source(Y, column('T1', 4)),
             predict(missing_data, Y, [column('T1', 3),
                         column('T1', 4)], X).
-query(magic_predict:_).
+%query(magic_predict:_).
 
-%final_pred:table_cell('T1', X, 7, V) :- magic_predict:cell_pred(X,Y,V,_).
-%final_pred:table_cell('T1', X, Y, V) :- missing_data:table_cell('T1', X,Y,V), Y \== 7.
+final_pred:table_cell('T1', X, 7, V) :- magic_predict:cell_pred(X,Y,V,_).
+final_pred:table_cell('T1', X, Y, V) :- missing_data:table_cell('T1', X,Y,V), Y \== 7.
 
-%magic_constraints:(0.7::table_cell(T,X,7,0):-table_cell(T,X,5,V), V < 300).
+magic_constraints:(0.7::table_cell(T,X,7,0);0.3::table_cell(T,X,7,1):-table_cell(T,X,5,V), V < 300).
 %%magic_constraints:(0.3::table_cell(T,X,7,1):-table_cell(T,X,5,V), V < 300).
 %%magic_constraints:(table_cell('T1',X,7,0):- between(1, 2, X), \+ table_cell('T1',X,7,1)).
-%magic_constraints:table_cell('T1', X, Y, V) :- missing_data:table_cell('T1', X,Y,V), Y \== 7.
+magic_constraints:table_cell('T1', X, Y, V) :- missing_data:table_cell('T1', X,Y,V), Y \== 7.
 
-%combined_pred:table_cell(T,X,Y,V) :- magic_constraints:table_cell(T,X,Y,V);final_pred:table_cell(T,X,Y,V).
+combined_pred:table_cell(T,X,Y,V) :- magic_constraints:table_cell(T,X,Y,V);final_pred:table_cell(T,X,Y,V).
 
-%query(combined_pred:_).
+query(combined_pred:_).
