@@ -155,6 +155,18 @@ function init_builtin() {
     });
 }
 
+function columnToLetter(column)
+{
+  var temp, letter = '';
+  while (column > 0)
+  {
+    temp = (column - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    column = (column - temp - 1) / 26;
+  }
+  return letter;
+}
+
 exports.init_problog = function(res) {
     var problog_path = Path.resolve(homedir, "problog");
     if (!FileSystem.existsSync(problog_path))
@@ -247,6 +259,46 @@ exports.runScript = function(filename, res) {
             if (active != null)
                 output.active = active;
             res.send(output);
+        }
+    });
+}
+
+exports.detect_tables = function(csv_file, res) {
+    const builtin_path = Path.resolve(homedir, 'builtin');
+    const options = {
+        mode: 'text',
+        scriptPath: builtin_path,
+        pythonOptions: ['-u'],
+        args: [
+            csv_file
+        ],
+        pythonPath: 'python',
+    };
+    PythonShell.run('detect_tables.py', options, function(err, results) {
+        if (err) {
+            console.error(err.message);
+            console.error(err.stack);
+            res.setHeader('Content-Type', 'application/json');
+            res.send({error: err});
+        }
+        else {
+            console.log("Results: " + results);
+            var result_output = [];
+            var regex = /\(([0-9]+):([0-9]+), ([0-9]+):([0-9]+)\)/;
+            results.forEach(element => {
+                var m = element.match(regex);
+                // Tacle indices are 0 based, excel is 1 based, hence the +1
+                // But end indices seem to be 1 based in Tacle??
+                if(m){
+                    begin_row = parseInt(m[1])+1;
+                    end_row = parseInt(m[2]);
+                    begin_col = columnToLetter(parseInt(m[3])+1);
+                    end_col = columnToLetter(parseInt(m[4]));
+                    result_output.push(begin_col + begin_row + ":" + end_col + end_row);
+                }
+            });
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify({ table_ranges: result_output }));
         }
     });
 }

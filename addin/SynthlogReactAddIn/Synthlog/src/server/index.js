@@ -45,6 +45,14 @@ app.post('/api/run_synthlog', (req, res) => {
     }
 });
 
+app.post('/api/detect_tables', (req, res) => {
+    console.log("here2!");
+    console.log(req.body);
+    if (req.body.file) {
+        structure.detect_tables(req.body.file, res);
+    }
+});
+
 // start the app
 app.listen(3001, (error) => {
     if (error) {

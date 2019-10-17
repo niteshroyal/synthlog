@@ -5,6 +5,7 @@ import 'isomorphic-fetch';
 import UserTheorySaver from './UserTheorySaver';
 import TheoryLoader from './TheoryLoader';
 import { PredictionDiv } from './PredictionDiv';
+import { Button, ButtonType } from 'office-ui-fabric-react';
 
 
 export default class App extends React.Component {
@@ -20,7 +21,8 @@ export default class App extends React.Component {
       idb: false,
       theories: [],
       debug: '',
-      message:''
+      message:'',
+      tables: []
     };
 
     this.idb_running = false;
@@ -109,6 +111,7 @@ export default class App extends React.Component {
 
         <div>
           <p>{ this.state.debug }</p>
+          <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>
         </div>
 
         <UserTheorySaver parent={this} />
@@ -138,7 +141,55 @@ export default class App extends React.Component {
       })
   }
 
-  fillSpreadsheet = async(cells) => {
+  detectTables(){
+    var that = this;
+    var parameters = {file:Office.context.document.url};
+    return fetch(`${this.api}/detect_tables`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(parameters)
+    })
+    .then(response => response.json())
+    .then(function(json) {
+      if (json.table_ranges){
+        json.table_ranges.forEach(r => {
+          that.state.tables.push(r);
+          that.highlightRange(r);
+        });
+      }
+      return json;
+    })
+    .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))   
+  }
+
+  highlightRange = async(range) => {
+    var that = this;
+      try {
+        await Excel.run(function(context) {
+          const sheets = context.workbook.worksheets;
+          const firstSheet = sheets.getActiveWorksheet();
+          var rangeExcel = firstSheet.getRange(range);
+          rangeExcel.format.borders.getItem('EdgeRight').style = "Continuous";
+          rangeExcel.format.borders.getItem('EdgeLeft').style = "Continuous";
+          rangeExcel.format.borders.getItem('EdgeBottom').style = "Continuous";
+          rangeExcel.format.borders.getItem('EdgeTop').style = "Continuous";
+          rangeExcel.format.borders.getItem('EdgeTop').color = "orange";
+          rangeExcel.format.borders.getItem('EdgeTop').weight = "Thick";
+          return context.sync();
+        })
+        .catch(function(err) {
+          fetch(`${that.api}/log?type=${err.name}&message=${err.message}`);
+        })
+      }
+      catch(err) {
+        fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
+      }
+  }
+
+  fillSpreadsheet = async(cells, useColors=true) => {
       var that = this;
       try {
         await Excel.run(function(context) {
@@ -146,16 +197,18 @@ export default class App extends React.Component {
           const firstSheet = sheets.getActiveWorksheet();
           cells.forEach(function(element){ 
             firstSheet.getCell(element[0],element[1]).values = [[element[2]]];
-            if(element[3] > 0.9 && element[3] < 1)
-              firstSheet.getCell(element[0],element[1]).format.fill.color = "#006837";
-            else if(element[3] > 0.8 && element[3] < 0.9)
-              firstSheet.getCell(element[0],element[1]).format.fill.color = "#31a354";
-            else if(element[3] > 0.7 && element[3] < 0.8)
-              firstSheet.getCell(element[0],element[1]).format.fill.color = "#78c679";
-            else if(element[3] > 0.6 && element[3] < 0.7)
-              firstSheet.getCell(element[0],element[1]).format.fill.color = "#c2e699";
-            else
-            firstSheet.getCell(element[0],element[1]).format.fill.color = "#ffffcc";
+            if(useColors){
+              if(element[3] > 0.9 && element[3] < 1)
+                firstSheet.getCell(element[0],element[1]).format.fill.color = "#006837";
+              else if(element[3] > 0.8 && element[3] < 0.9)
+                firstSheet.getCell(element[0],element[1]).format.fill.color = "#31a354";
+              else if(element[3] > 0.7 && element[3] < 0.8)
+                firstSheet.getCell(element[0],element[1]).format.fill.color = "#78c679";
+              else if(element[3] > 0.6 && element[3] < 0.7)
+                firstSheet.getCell(element[0],element[1]).format.fill.color = "#c2e699";
+              else
+              firstSheet.getCell(element[0],element[1]).format.fill.color = "#ffffcc";
+            }
           }
           );
           return context.sync();

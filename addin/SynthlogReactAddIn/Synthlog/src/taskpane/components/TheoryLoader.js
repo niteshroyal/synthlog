@@ -30,7 +30,7 @@ export default class TheoryLoader extends React.Component {
                         try {
                             that.parent.clearSpreadsheet();
                             var cells = that.parseResult(json.output);
-                            that.parent.fillSpreadsheet(cells);
+                            that.parent.fillSpreadsheet(cells, false);
                         }
                         catch(err) {
                             that.setState({click: err.message});
@@ -88,7 +88,7 @@ export default class TheoryLoader extends React.Component {
         var regex = /cell\(([0-9]+),([0-9]+),(.+)\)/;
         result.forEach(function(element) {
             var m = element.match(regex);
-            cells.push([parseInt(m[1]), parseInt(m[2]), m[3].replace(/'/g, '')]);
+            cells.push([parseInt(m[1])-1, parseInt(m[2])-1, m[3].replace(/'/g, '')]);
         });
         return cells;
     }
