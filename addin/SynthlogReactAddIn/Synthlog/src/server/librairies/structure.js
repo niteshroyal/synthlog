@@ -4,15 +4,15 @@ const Request = require('request');
 const Os = require('os');
 const Path = require('path');
 const { PythonShell } = require('python-shell');
-const Process =require('process');
+const Process = require('process');
 
-var homedir = Path.resolve(Os.homedir(), ".SynthLogBackEnd"); 
+var homedir = Path.resolve(Os.homedir(), ".SynthLogBackEnd");
 var inited = false;
 var problog = false;
 
 function createDir(path) {
     if (!FileSystem.existsSync(path))
-            FileSystem.mkdirSync(path);
+        FileSystem.mkdirSync(path);
 }
 
 function downloadProblog(res) {
@@ -20,32 +20,32 @@ function downloadProblog(res) {
     var stream = Request('https://github.com/ML-KULeuven/problog/archive/master.zip')
         .pipe(FileSystem.createWriteStream(path));
     stream.on('finish',
-            function(){
-                var zip = new AdmZip(path);
-                zip.extractAllTo(homedir, true);
-                FileSystem.unlink(path, function(e){console.log(e)});
-                FileSystem.renameSync(
-                    Path.resolve(homedir, "problog-master"),
-                    Path.resolve(homedir, "problog")
-                );
-                res.setHeader('Content-Type', 'application/json');
-                res.send(JSON.stringify({ init: true }));
-            }
-        );
+        function () {
+            var zip = new AdmZip(path);
+            zip.extractAllTo(homedir, true);
+            FileSystem.unlink(path, function (e) { console.log(e) });
+            FileSystem.renameSync(
+                Path.resolve(homedir, "problog-master"),
+                Path.resolve(homedir, "problog")
+            );
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify({ init: true }));
+        }
+    );
 }
 
 function generateCells(cells) {
     var res = []
 
-    if(cells) {
+    if (cells) {
         var row_number = cells.values.length;
         var column_number = cells.values[0].length;
 
         for (var i = 0; i < row_number; i++) {
             for (var j = 0; j < column_number; j++) {
                 res.push([
-                    i+cells.firstRow+1, 
-                    j+cells.firstColumn+1,
+                    i + cells.firstRow + 1,
+                    j + cells.firstColumn + 1,
                     cells.values[i][j],
                 ])
             }
@@ -58,7 +58,7 @@ function generateCells(cells) {
 function generateTypes(cells) {
     var res = []
 
-    if(cells) {
+    if (cells) {
         var row_number = cells.values.length;
         var column_number = cells.values[0].length;
 
@@ -72,7 +72,7 @@ function generateTypes(cells) {
     return res;
 }
 
-exports.generateParameters = function(parameters) {
+exports.generateParameters = function (parameters) {
     const cells = generateCells(parameters.cells);
     const types = generateTypes(parameters.cells);
     terms = generateTermStrings('cell', cells, false, types);
@@ -86,17 +86,17 @@ exports.generateParameters = function(parameters) {
         else if (key == "homedir") {
             for (var k in parameters["homedir"]) {
                 if (Array.isArray(parameters[key]))
-                terms += generateTermStrings(
-                    k, 
-                    parameters["homedir"][k], 
-                    fromhome=true
-                );
-            else
-                terms += generateTermStrings(
-                    k, 
-                    [[parameters["homedir"][k]]], 
-                    fromhome=true
-                );
+                    terms += generateTermStrings(
+                        k,
+                        parameters["homedir"][k],
+                        fromhome = true
+                    );
+                else
+                    terms += generateTermStrings(
+                        k,
+                        [[parameters["homedir"][k]]],
+                        fromhome = true
+                    );
             }
         }
     }
@@ -104,27 +104,27 @@ exports.generateParameters = function(parameters) {
     FileSystem.writeFileSync(Path.resolve(homedir, 'parameters.pl'), terms);
 }
 
-function generateTermStrings(key, values, fromhome=false, types=[]) {
+function generateTermStrings(key, values, fromhome = false, types = []) {
     terms = "";
-    values.forEach((element,i) => {
+    values.forEach((element, i) => {
         args = "";
         var addTerm = true;
-        element.forEach((arg,j) => { 
-            if (args != "") args += ","; 
+        element.forEach((arg, j) => {
+            if (args != "") args += ",";
             a = arg.toString();
             if (fromhome) a = "'" + Path.resolve(homedir, a) + "'";
             // We add a quote if the argument is a string (except for the fist 2 arguments, that are x and y coordinates)
-            if (types.length > 0){
-                if(types[i] == "String" && j > 1)
+            if (types.length > 0) {
+                if (types[i] == "String" && j > 1)
                     a = "'" + a + "'";
                 // If it's an empty cell, we don't add it
-                if(types[i]=="Empty")
+                if (types[i] == "Empty")
                     addTerm = false;
             }
             args += a;
         });
         if (args != "") args = "(" + args + ")";
-        if(addTerm) {
+        if (addTerm) {
             // We consider that a data member is a term with a type
             var scope = types.length > 0 ? '(data)' : '(parameters)';
             terms += "excel" + scope + ":" + key + args + ". ";
@@ -146,7 +146,7 @@ function init_builtin() {
     var builtin_resource_path = Path.resolve(__dirname, "..", "resources", "builtin");
     var items = FileSystem.readdirSync(builtin_resource_path);
 
-    items.forEach(function(item) {
+    items.forEach(function (item) {
         var resource_target_path = Path.resolve(builtin_path, item);
         if (!FileSystem.existsSync(resource_target_path)) {
             var resource_path = Path.resolve(builtin_resource_path, item);
@@ -155,19 +155,17 @@ function init_builtin() {
     });
 }
 
-function columnToLetter(column)
-{
-  var temp, letter = '';
-  while (column > 0)
-  {
-    temp = (column - 1) % 26;
-    letter = String.fromCharCode(temp + 65) + letter;
-    column = (column - temp - 1) / 26;
-  }
-  return letter;
+function columnToLetter(column) {
+    var temp, letter = '';
+    while (column > 0) {
+        temp = (column - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        column = (column - temp - 1) / 26;
+    }
+    return letter;
 }
 
-exports.init_problog = function(res) {
+exports.init_problog = function (res) {
     var problog_path = Path.resolve(homedir, "problog");
     if (!FileSystem.existsSync(problog_path))
         downloadProblog(res);
@@ -177,27 +175,27 @@ exports.init_problog = function(res) {
     }
 }
 
-exports.init = function(res) {
+exports.init = function (res) {
     try {
         createDir(homedir);
 
         var synthlog_path = Path.resolve(homedir, "synthlog");
         if (!FileSystem.existsSync(synthlog_path))
             importSynthlog();
-        init_builtin();        
-        
+        init_builtin();
+
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: true }));
     }
-    catch(error) {
+    catch (error) {
         console.error(error);
-        
+
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: false }));
     }
 }
 
-exports.runScript = function(filename, res) {
+exports.runScript = function (filename, res) {
     const problog_path = Path.resolve(homedir, 'problog');
     Process.chdir(Path.resolve(homedir, 'synthlog'));
     const options = {
@@ -211,12 +209,12 @@ exports.runScript = function(filename, res) {
             Path.resolve(homedir, filename)
         ]
     };
-    PythonShell.run('problog-cli.py', options, function(err, results) {
+    PythonShell.run('problog-cli.py', options, function (err, results) {
         if (err) {
             console.error(err.message);
             console.error(err.stack);
             res.setHeader('Content-Type', 'application/json');
-            res.send({error: err});
+            res.send({ error: err });
         }
         else {
             console.log("Results: " + results);
@@ -225,7 +223,7 @@ exports.runScript = function(filename, res) {
             var result_format = false;
             var result_output = [];
             results.forEach(element => {
-                var splits = element.replace(/\s/g,'').split(':');
+                var splits = element.replace(/\s/g, '').split(':');
                 if (splits.length > 2) {
                     if (!result_format && ['result', 'theory', 'active'].includes(splits[0])) {
                         result_format = true;
@@ -253,7 +251,7 @@ exports.runScript = function(filename, res) {
             res.setHeader('Content-Type', 'application/json');
             console.log("Theories: " + Array.from(theories));
             var output = {
-                output: result_format? result_output:results,
+                output: result_format ? result_output : results,
                 theories: Array.from(theories)
             }
             if (active != null)
@@ -263,7 +261,7 @@ exports.runScript = function(filename, res) {
     });
 }
 
-exports.detect_tables = function(csv_file, res) {
+exports.detect_tables = function (csv_file, res) {
     const builtin_path = Path.resolve(homedir, 'builtin');
     const options = {
         mode: 'text',
@@ -274,12 +272,12 @@ exports.detect_tables = function(csv_file, res) {
         ],
         pythonPath: 'python',
     };
-    PythonShell.run('detect_tables.py', options, function(err, results) {
+    PythonShell.run('detect_tables.py', options, function (err, results) {
         if (err) {
             console.error(err.message);
             console.error(err.stack);
             res.setHeader('Content-Type', 'application/json');
-            res.send({error: err});
+            res.send({ error: err });
         }
         else {
             console.log("Results: " + results);
@@ -289,10 +287,10 @@ exports.detect_tables = function(csv_file, res) {
                 var m = element.match(regex);
                 // Tacle indices are 0 based, excel is 1 based, hence the +1
                 // But end indices seem to be 1 based in Tacle??
-                if(m){
-                    begin_row = parseInt(m[1])+1;
+                if (m) {
+                    begin_row = parseInt(m[1]) + 1;
                     end_row = parseInt(m[2]);
-                    begin_col = columnToLetter(parseInt(m[3])+1);
+                    begin_col = columnToLetter(parseInt(m[3]) + 1);
                     end_col = columnToLetter(parseInt(m[4]));
                     result_output.push(begin_col + begin_row + ":" + end_col + end_row);
                 }
@@ -301,4 +299,15 @@ exports.detect_tables = function(csv_file, res) {
             res.send(JSON.stringify({ table_ranges: result_output }));
         }
     });
+}
+
+exports.extend_relevant = function (csv_file, relevant_ranges, unrelevant_ranges, res) {
+    // Call the actual python script for this
+    console.log("In extending");
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify({
+        relevant_ranges: relevant_ranges, unrelevant_ranges: unrelevant_ranges,
+        extended_relevant: ["magic_ice_cream!A6:B6"],
+        extended_unrelevant: ["magic_ice_cream!A9:B9"]
+    }));
 }

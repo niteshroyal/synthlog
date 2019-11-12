@@ -4,8 +4,10 @@ import Progress from './Progress';
 import 'isomorphic-fetch';
 import UserTheorySaver from './UserTheorySaver';
 import TheoryLoader from './TheoryLoader';
+import TableViewer from './TableViewer';
 import { PredictionDiv } from './PredictionDiv';
 import { Button, ButtonType } from 'office-ui-fabric-react';
+import { DatasetInteractiveBuild } from './DatasetInteractiveBuild';
 
 
 export default class App extends React.Component {
@@ -22,13 +24,14 @@ export default class App extends React.Component {
       theories: [],
       debug: '',
       message:'',
-      tables: []
+      tables: {}
     };
 
     this.idb_running = false;
     this.problog_running = false;
     this.python_running = false;
     this.handleClick = this.runIDBGeneration.bind(this);
+    this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"]
   }
 
   componentDidMount() {
@@ -109,14 +112,15 @@ export default class App extends React.Component {
           theories={ this.state.theories }
         />
 
-        <div>
-          <p>{ this.state.debug }</p>
-          <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>
-        </div>
-
         <UserTheorySaver parent={this} />
 
         <PredictionDiv parent={this}/>
+
+          <div>
+          <p>{ this.state.debug }</p>
+        </div>
+        <TableViewer parent={this} items={Object.keys(this.state.tables)}/>
+        <DatasetInteractiveBuild parent={this} />
       </div>
     );
   }
@@ -141,43 +145,22 @@ export default class App extends React.Component {
       })
   }
 
-  detectTables(){
-    var that = this;
-    var parameters = {file:Office.context.document.url};
-    return fetch(`${this.api}/detect_tables`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(parameters)
-    })
-    .then(response => response.json())
-    .then(function(json) {
-      if (json.table_ranges){
-        json.table_ranges.forEach(r => {
-          that.state.tables.push(r);
-          that.highlightRange(r);
-        });
-      }
-      return json;
-    })
-    .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))   
-  }
-
-  highlightRange = async(range) => {
+  highlightRange = async(range,table_id) => {
     var that = this;
       try {
         await Excel.run(function(context) {
           const sheets = context.workbook.worksheets;
           const firstSheet = sheets.getActiveWorksheet();
           var rangeExcel = firstSheet.getRange(range);
-          rangeExcel.format.borders.getItem('EdgeRight').style = "Continuous";
-          rangeExcel.format.borders.getItem('EdgeLeft').style = "Continuous";
-          rangeExcel.format.borders.getItem('EdgeBottom').style = "Continuous";
-          rangeExcel.format.borders.getItem('EdgeTop').style = "Continuous";
-          rangeExcel.format.borders.getItem('EdgeTop').color = "orange";
-          rangeExcel.format.borders.getItem('EdgeTop').weight = "Thick";
+          var border_color = that.colors[table_id%that.colors.length];
+          var border_style = "Continuous";
+          var border_weight = "Thick";
+          var border_list = ["EdgeRight", "EdgeLeft", "EdgeBottom", "EdgeTop"];
+          border_list.forEach(b => {
+            rangeExcel.format.borders.getItem(b).style = border_style;
+            rangeExcel.format.borders.getItem(b).color = border_color;
+            rangeExcel.format.borders.getItem(b).weight = border_weight;
+          });
           return context.sync();
         })
         .catch(function(err) {
@@ -318,4 +301,24 @@ export default class App extends React.Component {
       fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
     }
   }
+
+  getRangeRows(range, range_rows){
+    return Excel.run(function(context) {
+      context.sync().then(function () {
+      range.load(['areas']);
+      return context.sync();
+  })
+      .then(function () {
+          range.areas.items.forEach(function (e) {
+              var area_rows = [];
+              for (var i = e.rowIndex; i < e.rowIndex + e.rowCount; i++) {
+                  area_rows.push(i);
+              }
+              range_rows.extend(area_rows);
+          });
+          
+          return range.context.sync().then().catch(err => fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`));
+      });
+  })
+}
 }

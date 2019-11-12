@@ -37,6 +37,7 @@ export class PredictionDiv extends React.Component {
                     <p>
                         {this.state.message}
                     </p>
+                    <hr/>
                     
             </div>
         );

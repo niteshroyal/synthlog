@@ -53,6 +53,14 @@ app.post('/api/detect_tables', (req, res) => {
     }
 });
 
+app.post('/api/extend_relevant', (req, res) => {
+    console.log("here relevant!");
+    console.log(req.body);
+    if (req.body.file) {
+        structure.extend_relevant(req.body.file, req.body.relevant_ranges, req.body.unrelevant_ranges, res);
+    }
+});
+
 // start the app
 app.listen(3001, (error) => {
     if (error) {
