@@ -101,7 +101,7 @@ export class DatasetInteractiveBuild extends React.Component {
         var that = this;
         this.setState({ message: "inferring! pos: " + String(this.state.positive_ranges.length) + " neg: " + String(this.state.negative_ranges.length) });
 
-        var parameters = { file: Office.context.document.url, relevant_ranges: this.state.positive_ranges, unrelevant_ranges: this.state.negative_ranges };
+        var parameters = { file: Office.context.document.url, relevant_ranges: this.state.positive_ranges, unrelevant_ranges: this.state.negative_ranges, tables:this.parent.state.tables };
         fetch(`${that.parent.api}/extend_relevant`, {
             method: 'POST',
             headers: {

@@ -301,13 +301,14 @@ exports.detect_tables = function (csv_file, res) {
     });
 }
 
-exports.extend_relevant = function (csv_file, relevant_ranges, unrelevant_ranges, res) {
+exports.extend_relevant = function (csv_file, relevant_ranges, unrelevant_ranges, tables, res) {
     // Call the actual python script for this
     console.log("In extending");
+    console.log(tables);
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify({
         relevant_ranges: relevant_ranges, unrelevant_ranges: unrelevant_ranges,
         extended_relevant: ["magic_ice_cream!A6:B6"],
-        extended_unrelevant: ["magic_ice_cream!A9:B9"]
+        extended_unrelevant: []
     }));
 }

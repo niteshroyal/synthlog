@@ -22,6 +22,14 @@ module.exports = async (env, options)  => {
       'react-hot-loader/patch',
       './src/taskpane/index.js',
     ],
+    menu: [
+      'react-hot-loader/patch',
+      './src/taskpane/menu.js',
+    ],
+    mercs: [
+      'react-hot-loader/patch',
+      './src/taskpane/mercs.js',
+    ],
     commands: './src/commands/commands.js'
     },
     resolve: {
@@ -61,6 +69,16 @@ module.exports = async (env, options)  => {
         }
       ]),
       new ExtractTextPlugin('[name].[hash].css'),
+      new HtmlWebpackPlugin({
+        filename: "menu.html",
+        template: "./src/taskpane/menu.html",
+        chunks: ['menu', 'vendor', 'polyfill']
+      }),
+      new HtmlWebpackPlugin({
+        filename: "mercs.html",
+        template: "./src/taskpane/mercs.html",
+        chunks: ['mercs', 'vendor', 'polyfill']
+      }),
       new HtmlWebpackPlugin({
         filename: "taskpane.html",
           template: './src/taskpane/taskpane.html',

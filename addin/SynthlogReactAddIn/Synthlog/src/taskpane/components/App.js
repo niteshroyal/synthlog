@@ -91,6 +91,7 @@ export default class App extends React.Component {
     return (
       <div id='main' className='ms-welcome'>
         <div id="info">
+          <a href="menu.html">Back to menu</a>
           <CheckLabel 
             message="Python command" 
             boolean={ this.state.python } 
