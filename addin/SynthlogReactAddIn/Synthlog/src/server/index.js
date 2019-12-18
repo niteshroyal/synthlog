@@ -45,13 +45,46 @@ app.get('/api/log', (req, res) => {
 });
 
 app.use(express.json());
-app.post('/api/add_sheet', (req, res) => {
-    console.log("adding a table to db");
+app.post('/api/add_sheet', async (req, res) => {
+    console.log("adding a sheet to db");
+    console.log(req.body);
     if (req.body) {
-        databases.add_sheet(req.body);
-        var id = databases.get_sheet_id(req.body);
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify({ sheet_id: id }));
+        await databases.add_sheet(req.body);
+        databases.get_sheet_id(req.body, res);
+    }
+}
+);
+
+app.post('/api/add_table', async (req, res) => {
+    console.log("adding a table to db");
+    console.log(req.body)
+    if (req.body) {
+        await databases.add_table(req.body);
+        databases.get_table(req.body, res);
+    }
+}
+);
+
+app.post('/api/get_table', (req, res) => {
+    if (req.body) {
+        databases.get_table(req.body);
+    }
+}
+);
+
+app.post('/api/update_table_name', async (req, res) => {
+    if(req.body){
+        await databases.update_table_name(req.body);
+        databases.get_table(req.body, res);
+    }
+}
+);
+
+app.post('/api/get_sheet_tables', (req, res) => {
+    console.log("getting tables")
+    console.log(req.body);
+    if (req.body) {
+        databases.get_sheet_tables(req.body, res);
     }
 }
 );
@@ -66,7 +99,6 @@ app.post('/api/run_synthlog', (req, res) => {
 });
 
 app.post('/api/detect_tables', (req, res) => {
-    console.log("here2!");
     console.log(req.body);
     if (req.body.file) {
         structure.detect_tables(req.body.file, res);

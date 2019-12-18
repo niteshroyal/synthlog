@@ -1,6 +1,7 @@
 import * as React from 'react';
 import 'isomorphic-fetch';
 import SynthAppParent from './SynthAppParent';
+import TableViewer from './TableViewer';
 
 
 export default class MercsApp extends SynthAppParent {
@@ -18,6 +19,7 @@ export default class MercsApp extends SynthAppParent {
             <p>
                 Mercs
             </p>
+            <TableViewer parent={this}/>
         </div>
       </div>
     );
