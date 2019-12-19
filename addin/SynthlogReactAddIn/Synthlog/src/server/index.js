@@ -6,6 +6,7 @@ const cors = require('cors');
 const Os = require('os');
 var structure = require('./librairies/structure');
 var databases = require('./librairies/databases');
+var predictors = require('./librairies/predictors')
 var { PythonShell } = require('python-shell');
 const Path = require('path');
 
@@ -55,6 +56,42 @@ app.post('/api/add_sheet', async (req, res) => {
 }
 );
 
+app.post('/api/call_mercs', async (req, res) => {
+    console.log("calling mercs");
+    console.log(req.body)
+    if (req.body) {
+        predictors.callMERCS(req.body, res);
+    }
+}
+);
+
+app.post('/api/create_state', async (req, res) => {
+    console.log("Creating State");
+    console.log(req.body)
+    if (req.body) {
+        predictors.createState(req.body, res);
+    }
+}
+);
+
+app.post('/api/get_tasks', async (req, res) => {
+    console.log("Getting tasks suggestions");
+    console.log(req.body)
+    if (req.body) {
+        predictors.getTasks(req.body, res);
+    }
+}
+);
+
+app.post('/api/execute_task', async (req, res) => {
+    console.log("Executing task");
+    console.log(req.body)
+    if (req.body) {
+        predictors.executeTask(req.body, res);
+    }
+}
+);
+
 app.post('/api/add_table', async (req, res) => {
     console.log("adding a table to db");
     console.log(req.body)
@@ -73,7 +110,7 @@ app.post('/api/get_table', (req, res) => {
 );
 
 app.post('/api/update_table_name', async (req, res) => {
-    if(req.body){
+    if (req.body) {
         await databases.update_table_name(req.body);
         databases.get_table(req.body, res);
     }

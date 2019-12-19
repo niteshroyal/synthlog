@@ -262,7 +262,7 @@ exports.runScript = function (filename, res) {
 }
 
 exports.detect_tables = function (csv_file, res) {
-    const builtin_path = Path.resolve(homedir, 'builtin');
+    const builtin_path = Path.resolve(homedir, 'resources');
     const options = {
         mode: 'text',
         scriptPath: builtin_path,

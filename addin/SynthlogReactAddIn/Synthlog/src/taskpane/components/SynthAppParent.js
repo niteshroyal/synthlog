@@ -14,11 +14,16 @@ export default class SynthAppParent extends React.Component {
     this.nb_calls_add_table = 0;
     this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"]
 
+    this.currentState = { file: "", selection: "" };
+
+    this.state = { state_id: -1, tasks_suggestions: [] }
+
 
     this.initSQLiteDB();
     this.addCurrentSheets();
+    this.registerEventHandlers();
+    this.initState();
   }
-
 
   render() {
     return (
@@ -29,6 +34,52 @@ export default class SynthAppParent extends React.Component {
     );
   }
 
+  registerEventHandlers() {
+    var that = this;
+
+    try {
+      Excel.run(function (context) {
+        var sheet = context.workbook.worksheets.getActiveWorksheet();
+        sheet.onChanged.add(that.sheetChangeHandler.bind(that));
+        sheet.onSelectionChanged.add(that.sheetSelectionChangeHandler.bind(that));
+        return context.sync()
+          .then(function () {
+            fetch(`${that.api}/log?type=ok&message=registered`)
+          });
+      })
+    } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) }
+  }
+
+  sheetChangeHandler(event) {
+    var that = this;
+    fetch(`${that.api}/log?type=event&message=Changeevent!`)
+    return Excel.run(function (context) {
+      return context.sync()
+        .then(function () {
+          console.log("some event");
+          // Ideally, triggers the state update for specific events
+        });
+    })
+  }
+
+  sheetSelectionChangeHandler(event) {
+    var that = this;
+    fetch(`${that.api}/log?type=Selectionevent&message=Changeevent!`);
+    return Excel.run(function (context) {
+      return context.sync()
+        .then(function () {
+          var selectedRange = event.address;
+          that.currentState.selection = selectedRange
+          that.createState().then(that.getTaskSuggestions())
+          // Call state change api and get new suggested actions
+        });
+    })
+  }
+
+  initState() {
+    this.currentState.file = Office.context.document.url;
+  }
+
   initDatabases() {
     this.initSQLiteDB();
   }
@@ -37,6 +88,64 @@ export default class SynthAppParent extends React.Component {
     fetch(`${this.api}/init_sqlite_db`)
       .then(response => response.json())
       .then(json_res => this.sqlite_db = json_res.db_path);
+  }
+
+  createState() {
+    var that = this;
+    return fetch(`${this.api}/create_state`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(that.currentState)
+    })
+      .then(response => response.json())
+      .then(function (json) {
+        that.setStateId(json.id);
+        return json;
+      })
+      .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
+  }
+
+  getTaskSuggestions() {
+    var that = this;
+    var parameters = { state: that.state.state_id };
+    //var parameters = {state: "latest"};
+    return fetch(`${this.api}/get_tasks`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(parameters)
+    })
+      .then(response => response.json())
+      .then(function (json) {
+        that.setState({ tasks_suggestions: json.tasks })
+        return json;
+      })
+      .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
+  }
+
+  performTask(task_id){
+    var that = this;
+    var parameters = { state: that.state.state_id, task_id: task_id };
+    //var parameters = {state: "latest"};
+    return fetch(`${this.api}/execute_task`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(parameters)
+    })
+      .then(response => response.json())
+      .then(function (json) {
+        // Do something with the result
+        return json;
+      })
+      .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
   }
 
   addCurrentSheets() {
@@ -70,7 +179,7 @@ export default class SynthAppParent extends React.Component {
 
   addTableFromRange = async (range) => {
     var that = this;
-    var table_name = "table_" + uuidv4().slice(0,6);
+    var table_name = "table_" + uuidv4().slice(0, 6);
     var start = range.split(":")[0];
     var end = range.split(":")[1];
     var sheet_id = -1;
@@ -125,6 +234,14 @@ export default class SynthAppParent extends React.Component {
 
   getTableIndex(index) {
     return Array.from(this.tables.keys()).indexOf(index);
+  }
+
+  setStateId(id) {
+    this.setState({ state_id: id });
+  }
+
+  getStateId() {
+    return this.state.state_id;
   }
 
   highlightRange = async (range, table_id) => {
