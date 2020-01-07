@@ -3,9 +3,10 @@ import argparse
 import os
 
 class State:
-    def __init__(self, filepath="", selection=""):
+    def __init__(self, filepath="", selection="", tables=[]):
         self.filepath = filepath
         self.selection = selection # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 celle is selected
+        self.tables = tables
         # Add more attributes here
 
     def get_filepath(self):
@@ -58,12 +59,14 @@ if __name__ == "__main__":
     parser.add_argument("--create", help="Create a new state", action="store_true")
     parser.add_argument("--filepath", help="Path to the spreadsheet file", type=str)
     parser.add_argument("--selection", help="Current selection, as a range (string)", type=str)
+    parser.add_argument("--tables", help="Tables in the spreadsheet, as a list of ranges. Ranges should be separated with a space", type=lambda s: [r for r in s.split(' ')])
     args = parser.parse_args()
 
     if args.create:
         filepath = args.filepath if args.filepath else ""
         selection = args.selection if args.selection else ""
-        state = State(filepath=filepath, selection=selection)
+        tables = args.tables if args.tables else []
+        state = State(filepath=filepath, selection=selection, tables=tables)
         manager = StateManager()
         res = manager.add_state(state)
         print(res)

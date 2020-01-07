@@ -16,8 +16,6 @@ export default class TableViewer extends React.Component {
       filterText: '',
       items: this._originalItems.slice()
     };
-
-    this.loadTablesFromDB();
   }
 
   render() {
@@ -27,14 +25,14 @@ export default class TableViewer extends React.Component {
     this.parent = parent;
     var items = this.state.items;
     const resultCountText = items.length === this._originalItems.length ? '' : ` (${items.length} of ${this._originalItems.length} shown)`;
-
+    // 
     return (
       <div id="tables">
         <div>
           <h3>Tables</h3>
-          <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>
         </div>
         <FocusZone direction={FocusZoneDirection.vertical}>
+          <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>
           <TextField label={'Filter by name' + resultCountText} onChange={this._onFilterChanged.bind(this)} />
           <List items={items} onRenderCell={this._onRenderCell.bind(this)} />
         </FocusZone>

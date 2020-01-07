@@ -15,12 +15,25 @@ function createDir(path) {
 
 exports.createState = function (params, res) {
     const builtin_path = Path.resolve(homedir, 'resources');
+
+    var table_string = ""
+    if(params.tables){
+        for (const entry of params.tables.entries()) {
+            console.log(entry)
+            var table = entry[1][1];
+            table_string += table.start_col + table.start_row + ":" + table.end_col + table.end_row + " ";
+          }
+        table_string = table_string.trim();
+    }
+    console.log("Table param")
+    console.log(table_string)
+
     const options = {
         mode: 'text',
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--create", "--filepath", params.file, "--selection", params.selection
+            "--create", "--filepath", params.file, "--selection", params.selection, "--tables", table_string
         ],
         pythonPath: 'python',
     };

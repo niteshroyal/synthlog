@@ -14,9 +14,9 @@ export default class SynthAppParent extends React.Component {
     this.nb_calls_add_table = 0;
     this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"]
 
-    this.currentState = { file: "", selection: "" };
+    this.currentState = { file: "", selection: "", tables: new Map() };
 
-    this.state = { state_id: -1, tasks_suggestions: [] }
+    this.state = { state_id: -1, tasks_suggestions: [] , init_error:""}
 
 
     this.initSQLiteDB();
@@ -32,6 +32,14 @@ export default class SynthAppParent extends React.Component {
         </div>
       </div>
     );
+  }
+  componentDidMount() {
+    this.initStructure();
+  }
+
+  initStructure() {
+    fetch(`${this.api}/init_backend`)
+    .catch(e => this.setState({init_error: e.toString()}))
   }
 
   registerEventHandlers() {
@@ -92,6 +100,7 @@ export default class SynthAppParent extends React.Component {
 
   createState() {
     var that = this;
+    that.currentState.tables = that.tables;
     return fetch(`${this.api}/create_state`, {
       method: 'POST',
       headers: {
