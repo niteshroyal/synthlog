@@ -27,7 +27,7 @@ Office.initialize = () => {
 };
 
 /* Initial render showing a progress bar */
-render(MercsApp);
+// render(MercsApp);
 
 if (module.hot) {
     module.hot.accept('./components/MercsApp', () => {

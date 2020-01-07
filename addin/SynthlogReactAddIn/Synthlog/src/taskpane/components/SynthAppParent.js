@@ -15,9 +15,11 @@ export default class SynthAppParent extends React.Component {
     this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"]
 
     this.currentState = { file: "", selection: "", tables: new Map() };
+    this.db_is_loaded = false;
 
     this.state = { state_id: -1, tasks_suggestions: [] , init_error:""}
 
+    this.addCurrentSheets();
     this.registerEventHandlers();
     this.initState();
   }
@@ -33,7 +35,13 @@ export default class SynthAppParent extends React.Component {
   componentDidMount() {
     var that=this;
     this.initStructure();
-    this.initSQLiteDB().then(function(){that.addCurrentSheets()});
+    
+  }
+  assureDBIsLoaded(){
+    if (!this.db_is_loaded){
+      this.db_is_loaded = true;
+      return this.initSQLiteDB();
+    }
   }
 
   initStructure() {
@@ -92,7 +100,7 @@ export default class SynthAppParent extends React.Component {
   }
 
   initSQLiteDB() {
-    fetch(`${this.api}/init_sqlite_db`)
+    return fetch(`${this.api}/init_sqlite_db`)
       .then(response => response.json())
       .then(json_res => this.sqlite_db = json_res.db_path);
   }
@@ -158,6 +166,9 @@ export default class SynthAppParent extends React.Component {
 
   addCurrentSheets() {
     var that = this;
+    this.assureDBIsLoaded().then(function(){
+
+    
     // Adds all sheets of the current workbook to the database
     // Ids are stored in this.sheet_ids
     Excel.run(async (context) => {
@@ -183,6 +194,7 @@ export default class SynthAppParent extends React.Component {
         } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) };
       });
     });
+  })
   }
 
   addTableFromRange = async (range) => {
