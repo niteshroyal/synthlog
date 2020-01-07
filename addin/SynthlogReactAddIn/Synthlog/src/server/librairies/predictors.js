@@ -35,7 +35,7 @@ exports.createState = function (params, res) {
         args: [
             "--create", "--filepath", params.file, "--selection", params.selection, "--tables", table_string
         ],
-        pythonPath: 'python',
+        pythonPath: process.env.PYTHON_PATH,
     };
 
     PythonShell.run('state_manager.py', options, function (err, results) {
@@ -68,7 +68,7 @@ exports.getTasks = function (params, res) {
         args: [
             "--get", "--state", state
         ],
-        pythonPath: 'python',
+        pythonPath: process.env.PYTHON_PATH,
     };
 
     PythonShell.run('learner.py', options, function (err, results) {
@@ -111,7 +111,7 @@ exports.executeTask = function (params, res) {
         args: [
             "--execute", params.task_id, "--state", state
         ],
-        pythonPath: 'python',
+        pythonPath: process.env.PYTHON_PATH,
     };
 
     PythonShell.run('learner.py', options, function (err, results) {
@@ -150,7 +150,7 @@ exports.callMERCS = function (params, res) {
         args: [
             csv_file
         ],
-        pythonPath: 'python',
+        pythonPath: process.env.PYTHON_PATH,
     };
     PythonShell.run('detect_tables.py', options, function (err, results) {
         if (err) {
