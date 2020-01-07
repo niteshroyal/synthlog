@@ -6,6 +6,7 @@ const Path = require('path');
 const { PythonShell } = require('python-shell');
 const Process = require('process');
 var ncp = require('ncp').ncp;
+require('dotenv').config()
 
 var homedir = Path.resolve(Os.homedir(), ".SynthLogBackEnd");
 var inited = false;
@@ -206,6 +207,7 @@ exports.init = function (res) {
         if (!FileSystem.existsSync(synthlog_path))
             importSynthlog();
         init_builtin();
+        init_python()
 
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: true }));
@@ -216,6 +218,12 @@ exports.init = function (res) {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: false }));
     }
+}
+
+
+init_python = function(){
+    // See for python env
+    // nodeCmd.get('virtualenv ', (err, data, stderr) => console.log(data));
 }
 
 exports.runScript = function (filename, res) {
@@ -293,7 +301,7 @@ exports.detect_tables = function (csv_file, res) {
         args: [
             csv_file
         ],
-        pythonPath: 'python',
+        pythonPath: process.env.PYTHON_PATH,
     };
     PythonShell.run('detect_tables.py', options, function (err, results) {
         if (err) {
