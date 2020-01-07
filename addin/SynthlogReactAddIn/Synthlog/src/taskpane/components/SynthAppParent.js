@@ -18,7 +18,6 @@ export default class SynthAppParent extends React.Component {
 
     this.state = { state_id: -1, tasks_suggestions: [] , init_error:""}
 
-
     this.initSQLiteDB();
     this.addCurrentSheets();
     this.registerEventHandlers();

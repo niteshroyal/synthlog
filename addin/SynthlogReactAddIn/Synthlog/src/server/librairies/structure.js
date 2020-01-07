@@ -5,6 +5,7 @@ const Os = require('os');
 const Path = require('path');
 const { PythonShell } = require('python-shell');
 const Process = require('process');
+var ncp = require('ncp').ncp;
 
 var homedir = Path.resolve(Os.homedir(), ".SynthLogBackEnd");
 var inited = false;
@@ -140,6 +141,8 @@ function importSynthlog() {
 }
 
 function init_builtin() {
+    // Copies builtin files to home directory
+    // Likely to be deprecated soon
     var builtin_path = Path.resolve(homedir, "builtin");
     createDir(builtin_path);
 
@@ -153,6 +156,26 @@ function init_builtin() {
             FileSystem.copyFileSync(resource_path, resource_target_path);
         }
     });
+
+    // Copies all files from resources to the home directory
+    var resources_path = Path.resolve(homedir, "resources");
+    createDir(resources_path);
+
+    builtin_resource_path = Path.resolve(__dirname, "..", "resources");
+    // items = FileSystem.readdirSync(builtin_resource_path);
+
+    ncp(builtin_resource_path, resources_path, function (err) {
+        if (err) {
+          return console.error(err);
+        }
+        console.log('Copied resources files!');
+    });
+
+    // items.forEach(function (item) {
+    //     var resource_target_path = Path.resolve(resources_path, item);
+    //     var resource_path = Path.resolve(builtin_resource_path, item);
+    //     FileSystem.copyFileSync(resource_path, resource_target_path);
+    // });
 }
 
 function columnToLetter(column) {
