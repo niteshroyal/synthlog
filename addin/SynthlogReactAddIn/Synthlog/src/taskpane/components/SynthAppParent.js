@@ -1,8 +1,13 @@
 import * as React from 'react';
 import 'isomorphic-fetch';
+
 const uuidv4 = require('uuid/v4');
 
 export default class SynthAppParent extends React.Component {
+  static server_log(message_type, message) {
+    fetch(`https://localhost:3001/api/log?type=${message_type}&message=${message}`)
+  }
+
   constructor(props, context) {
     super(props, context);
     this.api = 'https://localhost:3001/api';
@@ -12,14 +17,22 @@ export default class SynthAppParent extends React.Component {
     this.sheet_ids = new Map(); // dictionary mapping sheet names to their id in the db
     this.tables = new Map(); // list of active tables, either loaded through db or detected with python tool. Dictionary keys are table id, and value is the whole object
     this.nb_calls_add_table = 0;
-    this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"]
+    this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"];
 
     this.currentState = { file: "", selection: "", tables: new Map() };
     this.db_is_loaded = false;
 
-    this.state = { state_id: -1, tasks_suggestions: [] , init_error:""}
+    this.state = {
+      state_id: -1,
+      tasks_suggestions: [],
+      init_error: "",
+      task_suggestions_enabled: true,
+      loading: true,
+      log: "",
+      tables: []
+    };
 
-    this.addCurrentSheets();
+    // this.addCurrentSheets();
     this.registerEventHandlers();
     this.initState();
   }
@@ -46,7 +59,8 @@ export default class SynthAppParent extends React.Component {
 
   initStructure() {
     fetch(`${this.api}/init_backend`)
-    .catch(e => this.setState({init_error: e.toString()}))
+      .catch(e => this.setState({init_error: e.toString()}))
+        .then(() => this.initDatabases())
   }
 
   registerEventHandlers() {
@@ -80,15 +94,21 @@ export default class SynthAppParent extends React.Component {
   sheetSelectionChangeHandler(event) {
     var that = this;
     fetch(`${that.api}/log?type=Selectionevent&message=Changeevent!`);
-    return Excel.run(function (context) {
-      return context.sync()
-        .then(function () {
-          var selectedRange = event.address;
-          that.currentState.selection = selectedRange
-          that.createState().then(that.getTaskSuggestions())
-          // Call state change api and get new suggested actions
-        });
-    })
+
+    if(this.state.task_suggestions_enabled) {
+      return Excel.run(function (context) {
+        return context.sync()
+          .then(function () {
+            that.currentState.selection = event.address;
+            that.createState().then(that.getTaskSuggestions())
+            // Call state change api and get new suggested actions
+          });
+      })
+    }
+  }
+
+  loading() {
+
   }
 
   initState() {
@@ -102,7 +122,10 @@ export default class SynthAppParent extends React.Component {
   initSQLiteDB() {
     return fetch(`${this.api}/init_sqlite_db`)
       .then(response => response.json())
-      .then(json_res => this.sqlite_db = json_res.db_path);
+      .then(json_res => this.sqlite_db = json_res.db_path)
+      .then(() => this.addCurrentSheets(function() {
+        this.setState({loading: false});
+      }.bind(this)))
   }
 
   createState() {
@@ -138,7 +161,7 @@ export default class SynthAppParent extends React.Component {
     })
       .then(response => response.json())
       .then(function (json) {
-        that.setState({ tasks_suggestions: json.tasks })
+        that.setState({ tasks_suggestions: json.tasks });
         return json;
       })
       .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
@@ -164,22 +187,21 @@ export default class SynthAppParent extends React.Component {
       .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
   }
 
-  addCurrentSheets() {
+  addCurrentSheets(callback=null) {
     var that = this;
-    this.assureDBIsLoaded().then(function(){
-
     
     // Adds all sheets of the current workbook to the database
     // Ids are stored in this.sheet_ids
+
     Excel.run(async (context) => {
       var sheets = context.workbook.worksheets;
       sheets.load("items/name");
-      var filename = Office.context.document.url
-      await context.sync().then(function () {
+      var filename = Office.context.document.url;
+      await context.sync().then(async function () {
         try {
           for (var i in sheets.items) {
             var parameters = { filename: filename, name: sheets.items[i].name, db_path: that.sqlite_db };
-            fetch(`${that.api}/add_sheet`, {
+            await fetch(`${that.api}/add_sheet`, {
               method: 'POST',
               headers: {
                 'Accept': 'application/json',
@@ -189,12 +211,16 @@ export default class SynthAppParent extends React.Component {
             }).then(response => response.json())
               .then(function (json) {
                 that.sheet_ids.set(sheets.items[i].name, json.sheet_id);
-              })
+              });
           }
+
         } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) };
       });
+
+      if(callback) {
+        callback();
+      }
     });
-  })
   }
 
   addTableFromRange = async (range) => {
@@ -289,6 +315,12 @@ export default class SynthAppParent extends React.Component {
     catch (err) {
       fetch(`${this.api}/log?type=${err.name}&message=${err.message}`);
     }
+  };
+
+  loadTablesCallback(tables) {
+    SynthAppParent.server_log("loadTablesCallback", JSON.stringify(tables));
+    const newTables = tables.slice();
+    this.setState({tables: newTables});
   }
 
   getColors() {

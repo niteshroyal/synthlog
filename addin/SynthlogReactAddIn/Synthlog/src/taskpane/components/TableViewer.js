@@ -3,6 +3,7 @@ import { FocusZone, FocusZoneDirection } from 'office-ui-fabric-react/lib/FocusZ
 import { TextField } from 'office-ui-fabric-react/lib/TextField';
 import { List } from 'office-ui-fabric-react/lib/List';
 import { Button, ButtonType } from 'office-ui-fabric-react';
+import SynthAppParent from "./SynthAppParent";
 
 export default class TableViewer extends React.Component {
   constructor(props, context) {
@@ -14,18 +15,30 @@ export default class TableViewer extends React.Component {
 
     this.state = {
       filterText: '',
-      items: this._originalItems.slice()
+      items: this._originalItems.slice(),
     };
   }
 
+  componentDidMount() {
+    this.loadTablesFromDB();
+  }
+
   render() {
-    const {
-      parent,
-    } = this.props;
-    this.parent = parent;
-    var items = this.state.items;
-    const resultCountText = items.length === this._originalItems.length ? '' : ` (${items.length} of ${this._originalItems.length} shown)`;
-    // 
+    // const {
+    //   parent,
+    // } = this.props;
+    // this.parent = parent;
+    // var items = this.state.items;
+    // const resultCountText = items.length === this._originalItems.length ? '' : ` (${items.length} of ${this._originalItems.length} shown)`;
+    //
+
+    const tables = this.props.tables.map((item, index) => {
+      return {
+        name: item.name,
+        color: this.props.colors[index]
+      }
+    });
+
     return (
       <div id="tables">
         <div>
@@ -33,8 +46,8 @@ export default class TableViewer extends React.Component {
         </div>
         <FocusZone direction={FocusZoneDirection.vertical}>
           <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>
-          <TextField label={'Filter by name' + resultCountText} onChange={this._onFilterChanged.bind(this)} />
-          <List items={items} onRenderCell={this._onRenderCell.bind(this)} />
+          <TextField label={'Filter by name'} onChange={this._onFilterChanged.bind(this)} />
+          <List items={tables} onRenderCell={this._onRenderCell.bind(this)} />
         </FocusZone>
         <hr />
       </div>
@@ -57,8 +70,9 @@ export default class TableViewer extends React.Component {
 
   loadTablesFromDB() {
     var that = this;
+
     for (const [sheet_name, sheet_id] of this.parent.getSheetIds()) {
-      var parameters = { db_path: that.parent.getSQLiteDB(), id: sheet_id }
+      var parameters = { db_path: that.parent.getSQLiteDB(), id: sheet_id };
       fetch(`${that.parent.api}/get_sheet_tables`, {
         method: 'POST',
         headers: {
@@ -70,30 +84,12 @@ export default class TableViewer extends React.Component {
         return response.json();
       })
         .then(function (json) {
-          try {
-            for (var i in json.tables) {
-              var table = json.tables[i];
-
-              that.parent.getTables().set(table.id, table);
-              var range = table.start_col + table.start_row + table.end_col + table.end_row;
-
-              var index = that.parent.getTableIndex(table.id);
-
-              that.parent.highlightRange(range, index);
-
-              that.appendItems(table.id);
-            }
-
-          } catch (err) {
-            fetch(`${that.parent.api}/log?type=${err.name}&message=${err.message}`)
-          }
-        }
-        )
+            that.props.loadTablesFn(json.tables)
+        })
     }
   }
 
   detectTables = async () => {
-    this.loadTablesFromDB();
     var that = this;
     var parameters = { file: Office.context.document.url };
     return fetch(`${this.parent.api}/detect_tables`, {
@@ -105,28 +101,31 @@ export default class TableViewer extends React.Component {
       body: JSON.stringify(parameters)
     })
       .then(response => response.json())
-      .then(function (json) {
+      .then(async function (json) {
         if (json.table_ranges) {
-          json.table_ranges.forEach(async (r) => {
-            var default_key = -1;
-            default_key = await that.parent.addTableFromRange(r);
-            try {
-              if (default_key >= 0) {
-                var index = that.parent.getTableIndex(default_key);
-
-                that.parent.highlightRange(r, index);
-                that.appendItems(default_key);
-              }
+            for(let i = 0; i < json.table_ranges.length; i++) {
+                await that.parent.addTableFromRange(json.table_ranges[i]);
             }
-            catch (err) {
-              fetch(`${that.parent.api}/log?type=${err.name}&message=${err.message}`)
-            }
-          });
+            that.loadTablesFromDB();
+          // json.table_ranges.forEach(async (r) => {
+          //
+          //   // try {
+          //   //   if (default_key >= 0) {
+          //   //     var index = that.parent.getTableIndex(default_key);
+          //   //
+          //   //     // that.parent.highlightRange(r, index);
+          //   //     // that.appendItems(default_key);
+          //   //   }
+          //   // }
+          //   // catch (err) {
+          //   //   fetch(`${that.parent.api}/log?type=${err.name}&message=${err.message}`)
+          //   // }
+          // });
         }
         return json;
       })
       .catch(err => fetch(`${that.parent.api}/log?type=${err.name}&message=${err.message}`))
-  }
+  };
 
   _onFilterChanged = (_, text) => {
     try {
@@ -147,12 +146,8 @@ export default class TableViewer extends React.Component {
   };
 
   _onRenderCell(item, index) {
-    var colors = this.parent.getColors();
-    var name = this.parent.getTables().get(item).name;
-    var absolute_index = this._originalItems.indexOf(item);
-
     return (
-      <TextField componentRef={this.refsTableField[absolute_index]} defaultValue={name} style={{ color: colors[absolute_index] }} onChange={this._onChange.bind(this)}
+      <TextField id={"tableName" + index} defaultValue={item.name} style={{ color: item.color }} onChange={this._onChange.bind(this)}
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
             console.log('Enter key pressed');
@@ -165,14 +160,34 @@ export default class TableViewer extends React.Component {
           }
         }} />
       //<div><p style={{ color: colors[index] }}>{name}</p></div>
-    )
+    );
+
+    // var colors = this.parent.getColors();
+    // var name = this.parent.getTables().get(item).name;
+    // var absolute_index = this._originalItems.indexOf(item);
+    //
+    // return (
+    //   <TextField componentRef={this.refsTableField[absolute_index]} defaultValue={name} style={{ color: colors[absolute_index] }} onChange={this._onChange.bind(this)}
+    //     onKeyPress={(e) => {
+    //       if (e.key === 'Enter') {
+    //         console.log('Enter key pressed');
+    //         fetch(`${this.parent.api}/log?type=ok&message=enter pressed`);
+    //         try {
+    //           this.tableNameValidated(item, absolute_index);
+    //         } catch (err) {
+    //           fetch(`${this.parent.api}/log?type=${err.name}&message=${err.message}`);
+    //         }
+    //       }
+    //     }} />
+    //   //<div><p style={{ color: colors[index] }}>{name}</p></div>
+    // )
   }
 
   _onChange(event, value) {
     try {
       fetch(`${this.parent.api}/log?type=text_change&message=${value}`);
     } catch (err) {
-      fetch(`${that.parent.api}/log?type=${err.name}&message=${err.message}`);
+      fetch(`${this.parent.api}/log?type=${err.name}&message=${err.message}`);
     }
   }
 

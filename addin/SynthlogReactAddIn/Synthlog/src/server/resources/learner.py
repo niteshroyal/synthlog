@@ -21,7 +21,7 @@ class BaseTask(ABC):
         pass
 
     @abstractmethod
-    def descr(self):
+    def description(self):
         pass
 
 

@@ -41,3 +41,11 @@ Copyright (c) 2019 Microsoft Corporation. All rights reserved.
 - `npm run dev`
 
 Created filed / directories
+
+
+## Add new panel
+- add `panel.html`
+- add `panel.js`
+- add `PanelApp.js`
+- add url in `manifest.xml`
+- add config in `webpack.config.js`

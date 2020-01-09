@@ -70,7 +70,7 @@ class MERCSTask(BaseTask):
         # Undo the action (might not always be relevant)
         pass
 
-    def descr(self):
+    def description(self):
         return "MERCS prediction"
 
 
