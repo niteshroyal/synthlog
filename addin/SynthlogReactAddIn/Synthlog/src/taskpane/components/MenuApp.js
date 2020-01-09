@@ -20,6 +20,7 @@ export default class MenuApp extends React.Component {
         <div id="info">
             <a href="taskpane.html">Dev Taskpane</a><br/>
             <a href="mercs.html">Mercs model</a><br/>
+            <a href="tacle.html">TaCLe</a><br/>
             <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.increaseCount.bind(this)}>Increase count</Button>
             <p>
               Count = {this.state.nb_calls}
