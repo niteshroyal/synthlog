@@ -90,6 +90,7 @@ if __name__ == "__main__":
             if new_state is None:
                 new_state = state_manager.create_empty_state(learner.state.filepath)
 
+            new_state.previous_state_id = learner.state.id
             state_manager.add_state(new_state)
 
             print(json.dumps(state_manager.jsonify(new_state)))
