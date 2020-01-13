@@ -342,9 +342,9 @@ class StateManager:
             self._latest_state_loaded = True
         return self._latest_state
 
-    def get_state(self, state):
+    def get_state(self, state_id):
         if self.db:
-            return self.db[str(state)]
+            return self.db[str(state_id)]
         else:
             return None
 
@@ -374,14 +374,21 @@ class StateManager:
             json_dict = converter.add_to_json(state, json_dict)
         return json_dict
 
+    def print_state(self, state):
+        print(json.dumps(self.jsonify(state)))
 
-if __name__ == "__main__":
+
+def api():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
 
     action_initialize = "initialize"
     init_parser = subparsers.add_parser(action_initialize)
     init_parser.add_argument("filepath", help="Path to the spreadsheet file", type=str)
+
+    action_load = "load"
+    load_parser = subparsers.add_parser(action_load)
+    load_parser.add_argument("state_id", help="The id of the state to be loaded", type=int)
 
     # parser.add_argument("--create", help="Create a new state", action="store_true")
     # parser.add_argument(
@@ -393,25 +400,30 @@ if __name__ == "__main__":
     #     type=lambda s: [r for r in s.split(" ")],
     # )
     args = parser.parse_args()
+    manager = StateManager()
 
-    if args.action == action_initialize:
-        try:
-            manager = StateManager()
+    try:
+        if args.action == action_initialize:
             latest_state = manager.get_latest_state()  # TODO Make filename dependent
 
             if latest_state:
-                print(json.dumps(manager.jsonify(latest_state)))
+                manager.print_state(latest_state)
             else:
                 state = manager.create_empty_state(args.filepath)
                 manager.add_state(state)
                 assert manager.get_latest_state() is not None
-                print(json.dumps(manager.jsonify(state)))
-            manager.close_db()
-        except Exception as e:
-            print(json.dumps({"exception": traceback.format_exc()}))
+                manager.print_state(state)
 
+        elif args.action == action_load:
+            state = manager.get_state(args.state_id)
+            manager.print_state(state)
 
-# if args.create:
+    except Exception as e:
+        print(json.dumps({"exception": traceback.format_exc()}))
+    finally:
+        manager.close_db()
+
+    # if args.create:
     #     # filepath = args.filepath if args.filepath else ""
     #     # selection = args.selection if args.selection else ""
     #     # tables = args.tables if args.tables else []
@@ -444,3 +456,6 @@ if __name__ == "__main__":
     # else:
     #     print(json.dumps({"args": "none"}))
 
+
+if __name__ == "__main__":
+    api()
