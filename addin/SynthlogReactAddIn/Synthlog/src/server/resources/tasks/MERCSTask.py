@@ -2,6 +2,7 @@ import sys
 sys.path.append("..")
 
 from learner import BaseTask
+from gui import actions
 
 from mercs import Mercs
 import openpyxl
@@ -25,10 +26,10 @@ class MERCSTask(BaseTask):
         self.query = query
 
     def get_train_range(self):
-        selected_range = openpyxl.worksheet.cell_range.CellRange(self.state.selection)
+        selected_range = openpyxl.worksheet.cell_range.CellRange(self.state.selection.range.range_address)
         table_range = None
         for t in self.state.tables:
-            table_range_temp = openpyxl.worksheet.cell_range.CellRange(t)
+            table_range_temp = openpyxl.worksheet.cell_range.CellRange(t.range.range_address)
             # If the selected range is in a table, we use that table as the relevant one
             if selected_range.issubset(table_range_temp):
                 table_range = table_range_temp
@@ -64,7 +65,9 @@ class MERCSTask(BaseTask):
 
         y_pred = mod.predict(df.values[:, :-1], q_code=q_code, prediction_algorithm='mi')
 
-        print(encoders[prediction_index].inverse_transform(y_pred))
+        print(actions.PutCellValue("G8", "test"))
+
+        # print(encoders[prediction_index].inverse_transform(y_pred))
 
     def undo(self):
         # Undo the action (might not always be relevant)
