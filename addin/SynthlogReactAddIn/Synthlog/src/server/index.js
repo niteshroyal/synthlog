@@ -74,9 +74,18 @@ app.post('/api/create_state', async (req, res) => {
 }
 );
 
+app.post('/api/initial_state', async (req, res) => {
+    console.log("Getting initial state");
+    console.log(req.body);
+    if (req.body) {
+        structure.getInitialState(req.body.filename, res);
+    }
+}
+);
+
 app.post('/api/get_tasks', async (req, res) => {
     console.log("Getting tasks suggestions");
-    console.log(req.body)
+    console.log(req.body);
     if (req.body) {
         predictors.getTasks(req.body, res);
     }
@@ -85,7 +94,7 @@ app.post('/api/get_tasks', async (req, res) => {
 
 app.post('/api/execute_task', async (req, res) => {
     console.log("Executing task");
-    console.log(req.body)
+    console.log(req.body);
     if (req.body) {
         predictors.executeTask(req.body, res);
     }
@@ -94,7 +103,7 @@ app.post('/api/execute_task', async (req, res) => {
 
 app.post('/api/add_table', async (req, res) => {
     console.log("adding a table to db");
-    console.log(req.body)
+    console.log(req.body);
     if (req.body) {
         await databases.add_table(req.body);
         databases.get_table(req.body, res);

@@ -4,6 +4,8 @@ import SynthAppParent from './SynthAppParent';
 import TableViewer from './TableViewer';
 // import {TacleComponent} from "./TacleComponent";
 import {ExcelComponent} from "./ExcelComponent";
+import TasksComponent from "./TasksComponent";
+import ConstraintsViewer from "./ConstraintsViewer";
 
 
 export default class TacleApp extends SynthAppParent {
@@ -13,7 +15,6 @@ export default class TacleApp extends SynthAppParent {
 
     componentDidMount() {
         super.componentDidMount();
-        this.setState({task_suggestions_enabled: false});
     }
 
     render() {
@@ -36,10 +37,11 @@ export default class TacleApp extends SynthAppParent {
                         parent={this}
                         tables={this.state.tables}
                         colors={this.colors}
-                        loadTablesFn={this.loadTablesCallback.bind(this)}
                     />
+                    <ConstraintsViewer constraints={this.state.constraints} />
+                    <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} />
                     {/*<TacleComponent />*/}
-                    <ExcelComponent tables={this.state.tables} colors={this.colors} />
+                    <ExcelComponent tables={this.state.tables} colors={this.colors} blocks={this.state.blocks} />
                 </div>
             );
         }

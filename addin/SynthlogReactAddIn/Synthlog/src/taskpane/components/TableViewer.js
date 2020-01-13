@@ -8,19 +8,15 @@ import SynthAppParent from "./SynthAppParent";
 export default class TableViewer extends React.Component {
   constructor(props, context) {
     super(props, context);
-    this.parent = this.props.parent;
-    this._originalItems = Array.from(this.parent.getTables().keys());
+    // this.parent = this.props.parent;
+    // this._originalItems = Array.from(this.parent.getTables().keys());
 
-    this.refsTableField = [];
+    // this.refsTableField = [];
 
     this.state = {
       filterText: '',
-      items: this._originalItems.slice(),
+      // items: this._originalItems.slice(),
     };
-  }
-
-  componentDidMount() {
-    this.loadTablesFromDB();
   }
 
   render() {
@@ -41,15 +37,12 @@ export default class TableViewer extends React.Component {
 
     return (
       <div id="tables">
-        <div>
           <h3>Tables</h3>
-        </div>
         <FocusZone direction={FocusZoneDirection.vertical}>
-          <Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>
+          {/*<Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>*/}
           <TextField label={'Filter by name'} onChange={this._onFilterChanged.bind(this)} />
           <List items={tables} onRenderCell={this._onRenderCell.bind(this)} />
         </FocusZone>
-        <hr />
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 
-from learner import BaseTask
+from .task import BaseTask
 
 from mercs import Mercs
 import openpyxl

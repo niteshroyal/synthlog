@@ -1,41 +1,22 @@
-from abc import ABC, abstractmethod
-from tasks import MERCSTask
-import state_manager
+import json
+import traceback
+
+from tasks import tacle_tasks, ResetTask
 import shelve
 import argparse
 import os
-from state_manager import State
+from state_manager import StateManager, State
 
-class BaseTask(ABC):
 
-    @abstractmethod
+class TaskManager:
     def __init__(self, state):
-        self.state = state
-
-    @abstractmethod
-    def do(self):
-        pass
-
-    @abstractmethod
-    def undo(self):
-        pass
-
-    @abstractmethod
-    def description(self):
-        pass
-
-
-class Learner():
-    def __init__(self, state_id=None):
         self.tasks_db_path = os.path.join(os.getcwd(), "tasks_db")
         self.actions = {}
         self.load_actions()
-        self.state = None
-        self.state_id = state_id
+        self.state = state
         self.db = None
 
         self.load_actions()
-        self.load_state()
 
     def load_actions(self):
         self.db = shelve.open(self.tasks_db_path, writeback=True)
@@ -44,31 +25,35 @@ class Learner():
         if self.db:
             self.db.close()
 
-    def load_state(self):
-        manager = state_manager.StateManager()
-        if self.state_id:
-            self.state = manager.get_state(self.state_id)
-        else:
-            self.state = manager.get_latest_state()
-        manager.close_db()
+    # def load_state(self):
+    #     manager = StateManager()
+    #     if self.state_id:
+    #         self.state = manager.get_state(self.state_id)
+    #     else:
+    #         self.state = manager.get_latest_state()
+    #     manager.close_db()
 
     def get_task(self, task_id):
         if self.db:
             return self.db[str(task_id)]
 
     def get_suggested_tasks(self):
-        # Given the state, find the right task
-        # For now always a default merc task
-        new_task = MERCSTask.MERCSTask()
-        task_id = str(len(self.db)+1)
-        self.db[task_id] = new_task
-
-        return [(int(task_id), new_task.descr())]
+        task_pool = [
+            tacle_tasks.DetectTablesTask(self.state),
+            tacle_tasks.DetectBlocksTask(self.state),
+            tacle_tasks.TacleTask(self.state),
+            ResetTask.ResetTask(self.state)
+        ]  # TODO Add MERCS back
+        available_tasks = [t for t in task_pool if t.is_available()]
+        task_ids = [i + len(self.db) + 1 for i in range(len(available_tasks))]
+        for task, task_id in zip(available_tasks, task_ids):
+            self.db[str(task_id)] = task
+        return [{"id": k, "name": v} for k, v in zip(task_ids, [t.description() for t in available_tasks])]
 
     def execute_task(self, task_id):
         task = self.get_task(task_id)
         task.state = self.state
-        task.do()
+        return task.do()
 
 
 if __name__ == "__main__":
@@ -79,22 +64,40 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     learner = None
-    if args.get:
-        if args.state:
-            learner = Learner(args.state)
-        else:
-            learner = Learner()
-        tasks = learner.get_suggested_tasks()
-        for t in tasks:
-            print(t)
-        learner.close_db()
+    state_manager = StateManager()
 
-    if args.execute:
-        if args.state:
-            learner = Learner(args.state)
-        else:
-            learner = Learner()
-        learner.execute_task(args.execute)
-        learner.close_db()
+    try:
+        if args.get:
+            if args.state:
+                learner = TaskManager(args.state)
+            else:
+                learner = TaskManager(state_manager.get_latest_state())
+            tasks = learner.get_suggested_tasks()
+            print(json.dumps(tasks))
+            learner.close_db()
+
+        if args.execute:
+
+            if args.state:
+                learner = TaskManager(args.state)
+            else:
+                state = state_manager.get_latest_state()
+                assert state is not None
+                learner = TaskManager(state)
+
+            new_state = learner.execute_task(args.execute)
+
+            if new_state is None:
+                new_state = state_manager.create_empty_state(learner.state.filepath)
+
+            state_manager.add_state(new_state)
+
+            print(json.dumps(state_manager.jsonify(new_state)))
+            learner.close_db()
+    except Exception:
+        print(json.dumps({"exception": traceback.format_exc()}))
+    finally:
+        state_manager.close_db()
+
 
 

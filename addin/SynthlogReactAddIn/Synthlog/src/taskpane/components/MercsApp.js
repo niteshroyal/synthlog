@@ -2,7 +2,7 @@ import * as React from 'react';
 import 'isomorphic-fetch';
 import SynthAppParent from './SynthAppParent';
 import TableViewer from './TableViewer';
-import TasksComponent from './TasksComponent';
+// import TasksComponent from './TasksComponent';
 import { FocusZone, FocusZoneDirection } from 'office-ui-fabric-react/lib/FocusZone';
 import { Button, ButtonType } from 'office-ui-fabric-react';
 import { List } from 'office-ui-fabric-react/lib/List';
