@@ -6,6 +6,7 @@ import TableViewer from './TableViewer';
 import {ExcelComponent} from "./ExcelComponent";
 import TasksComponent from "./TasksComponent";
 import ConstraintsViewer from "./ConstraintsViewer";
+import ActivityLog from "./ActivityLog";
 
 
 export default class TacleApp extends SynthAppParent {
@@ -39,7 +40,8 @@ export default class TacleApp extends SynthAppParent {
                         colors={this.colors}
                     />
                     <ConstraintsViewer constraints={this.state.constraints} />
-                    <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} />
+                    <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} loading={this.state.loading_tasks}/>
+                    <ActivityLog activities={this.state.activities} loadState={this.loadStateFromId.bind(this)} />
                     {/*<TacleComponent />*/}
                     <ExcelComponent tables={this.state.tables} colors={this.colors} blocks={this.state.blocks} />
                 </div>

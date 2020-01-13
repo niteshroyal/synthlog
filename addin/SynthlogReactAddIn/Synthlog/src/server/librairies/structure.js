@@ -255,7 +255,7 @@ exports.getInitialState = function (filename, res) {
 
 exports.getState = function (state_id, res) {
     console.log("Getting state", state_id);
-    runScriptDefault("state_manager.py", ["load", state_id]);
+    runScriptDefault("state_manager.py", ["load", state_id], res);
 };
 
 function getDefaultOptions(args) {
@@ -269,7 +269,7 @@ function getDefaultOptions(args) {
     };
 }
 
-function runScriptDefault(script_name, args) {
+function runScriptDefault(script_name, args, res) {
     PythonShell.run('state_manager.py', getDefaultOptions(args), function (err, results) {
         if (err) {
             console.error(err.message);

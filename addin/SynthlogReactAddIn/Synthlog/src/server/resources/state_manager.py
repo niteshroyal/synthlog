@@ -360,6 +360,11 @@ class StateManager:
                 else:
                     self._latest_state = None
 
+    def set_latest(self, state):
+        self._latest_state_loaded = True
+        self._latest_state = state
+        self.db["latest"] = str(state.id)
+
     def add_state(self, state):
         self._latest_state = state
         state.id = len(self.db) + 1
@@ -416,6 +421,7 @@ def api():
 
         elif args.action == action_load:
             state = manager.get_state(args.state_id)
+            manager.set_latest(state)
             manager.print_state(state)
 
     except Exception as e:

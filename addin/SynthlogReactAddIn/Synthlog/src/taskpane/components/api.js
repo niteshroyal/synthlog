@@ -27,6 +27,12 @@ export default class ServerAPI {
         }).then((response) => response.json())
     }
 
+    getState(state_id) {
+        return this.postAndParse("get_state", {
+            state_id: state_id
+        });
+    }
+
     getTaskSuggestions(filename) {
         return this.postAndParse("get_tasks", {
             filename: filename
