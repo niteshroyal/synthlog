@@ -234,9 +234,7 @@ exports.getInitialState = function (filename, res) {
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--initialize",
-            "--filepath",
-            filename,
+            "initialize", filename,
         ],
         pythonPath: process.env.PYTHON_PATH,
     };
