@@ -3,9 +3,13 @@ import argparse
 import os
 import json
 import copy
-from typing import List, Dict
+import traceback
+from typing import List, Dict, Optional, Any
 
 from abc import ABC, abstractmethod
+
+from tacle import Constraint
+from tacle.indexing import Range as TacleRange
 
 
 class Jsonifyable(ABC):
@@ -18,6 +22,13 @@ class Jsonifyable(ABC):
         pass
 
 
+def jsonify(object_to_jsonify: Optional[Any]):
+    try:
+        return object_to_jsonify.jsonify() if object_to_jsonify is not None else None
+    except AttributeError:
+        return None
+
+
 class MetadataPropObject(ABC):
     """
     Class for an object that contains metadata
@@ -26,10 +37,30 @@ class MetadataPropObject(ABC):
     @abstractmethod
     def __init__(self, metadata):
         self.metadata = metadata
+        self.attributes = dict()
+
+    def __setitem__(self, key, value):
+        self.attributes[key] = value
+
+    def __getitem__(self, item):
+        return self.attributes[item]
+
+    def __contains__(self, item):
+        return item in self.attributes
 
     @abstractmethod
     def jsonify(self):
-        return {"metadata": [m.jsonify() for m in self.metadata]}
+        result = []
+        for m in self.metadata:
+            converted = jsonify(m)
+            if converted is not None:
+                result.append(converted)
+        attributes = dict()
+        for k, v in self.attributes.items():
+            converted = jsonify(v)
+            if converted is not None:
+                attributes[k] = converted
+        return {"metadata": result, "attributes": attributes}
 
 
 class FillFormatting:
@@ -76,9 +107,9 @@ class ObjectFormatting:
 
     def jsonify(self):
         return {
-            "fill": self.fill.jsonify(),
-            "font": self.font.jsonify(),
-            "borders": {k: v.jsonify() for k, v in self.borders.items()},
+            "fill": jsonify(self.fill),
+            "font": jsonify(self.font),
+            "borders": {k: jsonify(v) for k, v in self.borders.items()},
         }
 
 
@@ -109,12 +140,14 @@ class Range(MetadataPropObject):
     def __init__(
         self,
         range_address: str,
+        tacle_range: TacleRange,
         values,
         formatting: ObjectFormatting,
         metadata: List[Jsonifyable],
     ):
         super().__init__(metadata)
         self.range_address = range_address # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 cell is selected
+        self.tacle_range = tacle_range
         self.formatting = formatting
         self.values = values
 
@@ -122,40 +155,51 @@ class Range(MetadataPropObject):
         prop_dict = {
             "range_address": self.range_address,
             "values": self.values,
-            "formatting": self.formatting.jsonify(),
+            "formatting": jsonify(self.formatting),
         }
         prop_dict.update(super().jsonify())
-        return
+        return prop_dict
+
+    @staticmethod
+    def col_to_letter(col):
+        return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[col]
+
+    @staticmethod
+    def from_tacle_range(tacle_range: TacleRange):
+        start_letter, end_letter = (Range.col_to_letter(c) for c in (tacle_range.x0, tacle_range.x1 - 1))
+        range_address = f"{start_letter}{tacle_range.y0 + 1}:{end_letter}{tacle_range.y1}"
+        return Range(range_address, tacle_range, None, None, [])
 
 
 class Table(MetadataPropObject):
     def __init__(
-        self, range: Range, name: str, header: Range, metadata: List[Jsonifyable]
+        self, table_range: Range, name: str, header: Optional[Range] = None, metadata: List[Jsonifyable] = None
     ):
-        super().__init__(metadata)
-        self.range = range
+        super().__init__(metadata or [])
+        self.range = table_range
         self.name = name
         self.header = header
 
     def jsonify(self):
         prop_dict = {
-            "range": self.range.jsonify(),
+            "range": jsonify(self.range),
             "name": self.name,
-            "header": self.header.jsonify(),
+            "header": jsonify(self.header),
         }
         prop_dict.update(super().jsonify())
         return prop_dict
 
+
 class Selection:
-    def __init__(self, range: Range):
-        self.range = range
+    def __init__(self, table_range: Range):
+        self.range = table_range
 
     def jsonify(self):
         return {"range": self.range.jsonify()}
 
 
 class State(MetadataPropObject):
-    def __init__(self, filepath: str, selection: Selection, tables: List[Table], objects: List[Jsonifyable], metadata: List[Jsonifyable]):
+    def __init__(self, filepath: str, selection: Optional[Selection], tables: List[Table], objects: List[Jsonifyable]):
         self.filepath = filepath
         self.selection = selection
         self.tables = tables
@@ -190,14 +234,70 @@ class State(MetadataPropObject):
         """
         return {
             "filepath": self.filepath,
-            "selection": self.selection.jsonify(),
-            "tables": [t.jsonify() for t in self.tables],
+            "selection": self.selection.jsonify() if self.selection else None,
+            # "tables": [t.jsonify() for t in self.tables],
         }
 
     def save_state(self, db_path=""):
         manager = StateManager(db_path=db_path)
         res = manager.add_state(self)
         manager.close_db()
+
+
+class StateConverter:
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        raise NotImplementedError()
+
+
+class TableConverter(StateConverter):
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        result = {
+            "tables": [t.jsonify() for t in state.tables]
+        }
+        result.update(json_dict)
+        return result
+
+
+class BlockConverter(StateConverter):
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        blocks = []
+        for table in state.tables:
+            if "tacle_table" in table:
+                tacle_table = table["tacle_table"]
+                for block in tacle_table.blocks:
+                    absolute_range = tacle_table.range.relative_to_absolute(block.relative_range)
+                    blocks.append({
+                        "table": table.name,
+                        "range": Range.from_tacle_range(absolute_range).jsonify(),
+                    })
+        result = {
+            "blocks": blocks
+        }
+        result.update(json_dict)
+        return result
+
+
+class ConstraintConverter(StateConverter):
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        constraints = []
+        for o in state.objects:
+            if isinstance(o, dict) and o.get("object_type", None) == "constraint":
+                constraint = Constraint.from_dict(o)
+
+                constraint_args = dict()
+                for arg_name, arg_value in o["assignment"].items():
+                    tacle_range = TacleRange.from_legacy_bounds(arg_value.bounds)
+                    constraint_args[arg_name] = Range.from_tacle_range(tacle_range)
+
+                constraints.append({
+                    "template_name": constraint.template.name,
+                    "name": constraint.template.to_string({k: v.range_address for k, v in constraint_args.items()}),
+                    "args": {k: v.jsonify() for k, v in constraint_args.items()}
+                })
+        result = {"constraints": constraints}
+        result.update(json_dict)
+        return result
+
 
 class StateManager:
     def __init__(self, db_path=""):
@@ -209,7 +309,14 @@ class StateManager:
         self.db = None
         self.load_db()
 
-        self.latest_state = None
+        self._latest_state = None
+        self._latest_state_loaded = False
+
+        self.converters = [
+            TableConverter(),
+            BlockConverter(),
+            ConstraintConverter(),
+        ]  # type: List[StateConverter]
 
     def load_db(self):
         self.db = shelve.open(self.state_db_path, writeback=True)
@@ -217,8 +324,14 @@ class StateManager:
     def close_db(self):
         self.db.close()
 
-    def get_latest_state(self):
-        return self.latest_state
+    def create_empty_state(self, filename):
+        return State(filepath=filename, selection=None, tables=[], objects=[])
+
+    def get_latest_state(self) -> Optional[State]:
+        if not self._latest_state_loaded:
+            self.load_latest_state()
+            self._latest_state_loaded = True
+        return self._latest_state
 
     def get_state(self, state):
         if self.db:
@@ -229,18 +342,33 @@ class StateManager:
     def load_latest_state(self):
         if self.db:
             if "latest" in self.db:
-                self.latest_state = self.db[str(self.db["latest"])]
+                latest_key = str(self.db["latest"])
+                if latest_key in self.db:
+                    try:
+                        self._latest_state = self.db[latest_key]
+                    except AttributeError:
+                        raise
+                else:
+                    self._latest_state = None
 
     def add_state(self, state):
-        self.latest_state = state
+        self._latest_state = state
         state_id = str(len(self.db) + 1)
         self.db[state_id] = state
         self.db["latest"] = state_id
         return int(state_id)
 
+    def jsonify(self, state: State):
+        json_dict = state.jsonify()
+        for converter in self.converters:
+            json_dict = converter.add_to_json(state, json_dict)
+        return json_dict
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--initialize", help="Retrieve a state by filename, creating a new state if no state existed",
+                        action="store_true")
     parser.add_argument("--create", help="Create a new state", action="store_true")
     parser.add_argument("--filepath", help="Path to the spreadsheet file", type=str)
     parser.add_argument(
@@ -264,4 +392,25 @@ if __name__ == "__main__":
         res = manager.add_state(state)
         print(res)
         manager.close_db()
+    elif args.initialize:
+        try:
+            assert args.filepath is not None
+            manager = StateManager()
+            latest_state = manager.get_latest_state()  # TODO Make filename dependent
+
+            # print(json.dumps({"exceptionNone": json.dumps([manager.db["latest"], manager.db["latest"] in manager.db])}))
+            # exit(0)
+
+            if latest_state:
+                print(json.dumps(manager.jsonify(latest_state)))
+            else:
+                state = manager.create_empty_state(args.filepath)
+                manager.add_state(state)
+                assert manager.get_latest_state() is not None
+                print(json.dumps(manager.jsonify(state)))
+            manager.close_db()
+        except Exception as e:
+            print(json.dumps({"exception": traceback.format_exc()}))
+    else:
+        print(json.dumps({"args": "none"}))
 

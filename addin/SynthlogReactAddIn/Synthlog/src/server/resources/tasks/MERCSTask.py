@@ -1,8 +1,7 @@
 import sys
 sys.path.append("..")
 
-from learner import BaseTask
-from gui import actions
+from .task import BaseTask
 
 from mercs import Mercs
 import openpyxl
@@ -73,7 +72,7 @@ class MERCSTask(BaseTask):
         # Undo the action (might not always be relevant)
         pass
 
-    def descr(self):
+    def description(self):
         return "MERCS prediction"
 
 

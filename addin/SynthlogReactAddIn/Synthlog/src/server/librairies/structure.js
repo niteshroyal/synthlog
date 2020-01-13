@@ -6,7 +6,7 @@ const Path = require('path');
 const { PythonShell } = require('python-shell');
 const Process = require('process');
 var ncp = require('ncp').ncp;
-require('dotenv').config()
+require('dotenv').config();
 
 var homedir = Path.resolve(Os.homedir(), ".SynthLogBackEnd");
 var inited = false;
@@ -225,6 +225,36 @@ init_python = function(){
     // See for python env
     // nodeCmd.get('virtualenv ', (err, data, stderr) => console.log(data));
 }
+
+exports.getInitialState = function (filename, res) {
+    console.log("Getting initial state...");
+    const builtin_path = Path.resolve(homedir, 'resources');
+    const options = {
+        mode: 'text',
+        scriptPath: builtin_path,
+        pythonOptions: ['-u'],
+        args: [
+            "--initialize",
+            "--filepath",
+            filename,
+        ],
+        pythonPath: process.env.PYTHON_PATH,
+    };
+    PythonShell.run('state_manager.py', options, function (err, results) {
+        if (err) {
+            console.error(err.message);
+            console.error(err.stack);
+            res.setHeader('Content-Type', 'application/json');
+            res.send({ error: err });
+        }
+        else {
+            console.log("Initial state:", results[0]);
+            res.setHeader('Content-Type', 'application/json');
+            res.send(results[0]);
+        }
+    });
+
+};
 
 exports.runScript = function (filename, res) {
     const problog_path = Path.resolve(homedir, 'problog');

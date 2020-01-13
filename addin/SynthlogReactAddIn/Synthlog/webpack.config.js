@@ -30,6 +30,10 @@ module.exports = async (env, options)  => {
       'react-hot-loader/patch',
       './src/taskpane/mercs.js',
     ],
+    tacle: [
+      'react-hot-loader/patch',
+      './src/taskpane/tacle.js',
+    ],
     commands: './src/commands/commands.js'
     },
     resolve: {
@@ -78,6 +82,11 @@ module.exports = async (env, options)  => {
         filename: "mercs.html",
         template: "./src/taskpane/mercs.html",
         chunks: ['mercs', 'vendor', 'polyfill']
+      }),
+      new HtmlWebpackPlugin({
+        filename: "tacle.html",
+        template: "./src/taskpane/tacle.html",
+        chunks: ['tacle', 'vendor', 'polyfill']
       }),
       new HtmlWebpackPlugin({
         filename: "taskpane.html",

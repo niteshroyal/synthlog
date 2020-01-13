@@ -57,16 +57,16 @@ exports.createState = function (params, res) {
 
 exports.getTasks = function (params, res) {
     const builtin_path = Path.resolve(homedir, 'resources');
-    var state = "latest"
+    /*var state = "latest"
     if (params.state >= 0) {
         state = params.state
-    }
+    }*/
     const options = {
         mode: 'text',
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--get", "--state", state
+            "--get"//, "--state", state
         ],
         pythonPath: process.env.PYTHON_PATH,
     };
@@ -79,8 +79,7 @@ exports.getTasks = function (params, res) {
             res.send({ error: err });
         }
         else {
-            console.log("Results: " + results);
-            var result_output = [];
+            /*var result_output = [];
             var regex = /\(([0-9]+), '(.*)'\)/;
             results.forEach(element => {
                 var m = element.match(regex);
@@ -91,25 +90,27 @@ exports.getTasks = function (params, res) {
                 }
             });
             console.log("Tasks");
-            console.log(result_output);
+            console.log(result_output);*/
+
             res.setHeader('Content-Type', 'application/json');
-            res.send(JSON.stringify({ tasks: result_output }));
+            res.send(results[0]);
         }
     });
-}
+};
 
 exports.executeTask = function (params, res) {
     const builtin_path = Path.resolve(homedir, 'resources');
-    var state = "latest"
-    if (params.state >= 0) {
-        state = params.state
-    }
+    // var state = "latest";
+    // if (params.state >= 0) {
+    //     state = params.state
+    // }
+
     const options = {
         mode: 'text',
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--execute", params.task_id, "--state", state
+            "--execute", params.task_id
         ],
         pythonPath: process.env.PYTHON_PATH,
     };
@@ -122,7 +123,7 @@ exports.executeTask = function (params, res) {
             res.send({ error: err });
         }
         else {
-            console.log("Results: " + results);
+            console.log("Results: " + results[0]);
             // var result_output = [];
             // var regex = /\(([0-9]+), '(.*)'\)/;
             // results.forEach(element => {
@@ -136,10 +137,10 @@ exports.executeTask = function (params, res) {
             // console.log("Tasks");
             // console.log(result_output);
             res.setHeader('Content-Type', 'application/json');
-            res.send(JSON.stringify({ results: results }));
+            res.send(results[0]);
         }
     });
-}
+};
 
 exports.callMERCS = function (params, res) {
     const builtin_path = Path.resolve(homedir, 'builtin');
