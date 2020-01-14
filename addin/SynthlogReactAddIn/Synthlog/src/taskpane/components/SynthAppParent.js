@@ -207,13 +207,34 @@ export default class SynthAppParent extends React.Component {
     console.log("Execute task", task);
     const task_id = task.id;
     const activities = this.state.activities.slice();
+    const self = this;
     this.server_api.executeTask(SynthAppParent.getDocumentUrl(), task_id)
         .then((newState) => {
-          activities.push({name: task.name, previous_state_id: newState.previous_id});
+          const activity_index = activities.length;
+          const callback = function () {
+            self.executeActivityAction(activity_index);
+          };
+          activities.push({
+            name: task.name,
+            previous_state_id: newState.previous_id,
+            action: {
+              name: "Undo",
+              callback: callback,
+            }
+          });
           this.loadState(newState);
         }).then(() => {
-          this.setStateAsync({activities: activities});
+      this.setStateAsync({activities: activities});
     });
+  }
+
+  executeActivityAction(activity_index) {
+    const activity = this.state.activities[activity_index];
+    const state_id = activity.previous_state_id;
+    const activities = this.state.activities.filter((v, i) => i < activity_index);
+    this.setStateAsync({activities: activities}).then(
+        () => this.loadStateFromId(state_id)
+    );
   }
 
   getTaskSuggestions() {

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {FocusZone, FocusZoneDirection} from 'office-ui-fabric-react/lib/FocusZone';
 import {List} from 'office-ui-fabric-react/lib/List';
-import {Button, ButtonType, DefaultButton, Label} from "office-ui-fabric-react";
+import {DefaultButton, Label} from "office-ui-fabric-react";
 
 export default class ActivityLog extends React.Component {
     constructor(props, context) {
@@ -22,11 +22,11 @@ export default class ActivityLog extends React.Component {
 
     _onRenderCell(item, index) {
         return (
-            <div className="activity" style={{display:'flex'}}>
+            <div className="activity" style={{display: "flex", padding: "10px", justifyContent: "space-between"}}>
                 <Label>{item.name}</Label>
                 <DefaultButton
-                    onClick={function() {this.props.loadState(item.previous_state_id)}.bind(this)}
-                >Undo</DefaultButton>
+                    onClick={item.action.callback}
+                >{item.action.name}</DefaultButton>
             </div>
         );
     }

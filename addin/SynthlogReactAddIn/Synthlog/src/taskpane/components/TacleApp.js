@@ -32,7 +32,7 @@ export default class TacleApp extends SynthAppParent {
             return (
                 <div id='main' className='ms-welcome'>
                     <p>
-                        {this.state.log}
+                        {this.state.log}{this.state.state_id}
                     </p>
                     <TableViewer
                         parent={this}
