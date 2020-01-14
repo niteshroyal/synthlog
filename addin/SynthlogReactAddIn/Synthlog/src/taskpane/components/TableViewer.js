@@ -40,7 +40,7 @@ export default class TableViewer extends React.Component {
           <h3>Tables</h3>
         <FocusZone direction={FocusZoneDirection.vertical}>
           {/*<Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>*/}
-          <TextField label={'Filter by name'} onChange={this._onFilterChanged.bind(this)} />
+          {/*<TextField label={'Filter by name'} onChange={this._onFilterChanged.bind(this)} />*/}
           <List items={tables} onRenderCell={this._onRenderCell.bind(this)} />
         </FocusZone>
       </div>
@@ -139,8 +139,17 @@ export default class TableViewer extends React.Component {
   };
 
   _onRenderCell(item, index) {
+    const textStyle = {
+      color: item.color,
+      boxSizing: "border-box"
+    };
+
     return (
-      <TextField id={"tableName" + index} defaultValue={item.name} style={{ color: item.color }} onChange={this._onChange.bind(this)}
+      <TextField
+          id={"tableName" + index}
+          defaultValue={item.name}
+          style={textStyle}
+          onChange={this._onChange.bind(this)}
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
             console.log('Enter key pressed');

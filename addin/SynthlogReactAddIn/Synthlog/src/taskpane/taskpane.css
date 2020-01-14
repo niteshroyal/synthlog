@@ -95,3 +95,9 @@
 b {
     font-weight: bold;
 }
+
+.ms-TextField {
+    margin-left: 10px !important;
+    margin-right: 10px !important;
+    margin-bottom: 3px !important;
+}

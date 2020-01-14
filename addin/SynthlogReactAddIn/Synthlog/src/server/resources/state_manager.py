@@ -301,7 +301,8 @@ class ConstraintConverter(StateConverter):
                 constraints.append({
                     "template_name": constraint.template.name,
                     "name": constraint.template.to_string({k: v.range_address for k, v in constraint_args.items()}),
-                    "args": {k: v.jsonify() for k, v in constraint_args.items()}
+                    "args": {k: v.jsonify() for k, v in constraint_args.items()},
+                    "is_formula": constraint.template.is_formula(),
                 })
         result = {"constraints": constraints}
         result.update(json_dict)

@@ -22,7 +22,13 @@ export default class ActivityLog extends React.Component {
 
     _onRenderCell(item, index) {
         return (
-            <div className="activity" style={{display: "flex", padding: "10px", justifyContent: "space-between"}}>
+            <div className="activity" style={{
+                display: "flex",
+                paddingLeft: "10px",
+                paddingRight: "10px",
+                marginBottom: "3px",
+                justifyContent: "space-between"
+            }}>
                 <Label>{item.name}</Label>
                 <DefaultButton
                     onClick={item.action.callback}
