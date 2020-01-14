@@ -5,6 +5,7 @@ from state_manager import State
 class BaseTask(ABC):
     def __init__(self, state: State):
         self.state = state
+        self.context = {}
 
     def is_available(self) -> bool:
         return True
@@ -19,3 +20,6 @@ class BaseTask(ABC):
     @abstractmethod
     def description(self) -> str:
         pass
+
+    def set_context(self, context):
+        self.context = context

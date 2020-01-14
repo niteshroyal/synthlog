@@ -34,6 +34,10 @@ export default class SynthAppParent extends React.Component {
       predictions: [],
     };
 
+    this.graphic_context = {
+      selection: "",
+    }
+
     // this.addCurrentSheets();
     this.registerEventHandlers();
     this.initState();
@@ -50,11 +54,11 @@ export default class SynthAppParent extends React.Component {
 
   setStateAsync(newState) {
     console.log("Setting new state", newState);
-      return new Promise(function(resolve, reject) {
-        this.setState(newState, function() {
-            resolve();
-          });
-      }.bind(this));
+    return new Promise(function (resolve, reject) {
+      this.setState(newState, function () {
+        resolve();
+      });
+    }.bind(this));
   }
 
   componentDidMount() {
@@ -71,8 +75,8 @@ export default class SynthAppParent extends React.Component {
 
   initStructure() {
     fetch(`${this.api}/init_backend`)
-      .catch(e => this.setState({init_error: e.toString()}))
-        .then(() => this.initDatabases())
+      .catch(e => this.setState({ init_error: e.toString() }))
+      .then(() => this.initDatabases())
   }
 
   registerEventHandlers() {
@@ -105,9 +109,14 @@ export default class SynthAppParent extends React.Component {
 
   sheetSelectionChangeHandler(event) {
     var that = this;
-    fetch(`${that.api}/log?type=Selectionevent&message=Changeevent!`);
+    try {
+      fetch(`${that.api}/log?type=Selectionevent&message=Changeevent!`);
 
-    if(this.state.task_suggestions_enabled) {
+      that.graphic_context.selection = event.address;
+      fetch(`${that.api}/log?type=context&message=${that.graphic_context.selection}`);
+    } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) }
+
+    if (this.state.task_suggestions_enabled) {
       return Excel.run(function (context) {
         return context.sync()
           .then(function () {
@@ -135,10 +144,10 @@ export default class SynthAppParent extends React.Component {
   initSQLiteDB() {
     const that = this;
     return this.server_api.setupSqlite()
-        .then(json_res => this.sqlite_db = json_res.db_path)
-      .then(() => this.addCurrentSheets(function() {
+      .then(json_res => this.sqlite_db = json_res.db_path)
+      .then(() => this.addCurrentSheets(function () {
         this.server_api.getInitialState(Office.context.document.url)
-            .then(that.loadState.bind(that));
+          .then(that.loadState.bind(that));
       }.bind(this)))
   }
 
@@ -146,23 +155,23 @@ export default class SynthAppParent extends React.Component {
     console.log("Loading state:", state);
     const activities = [];
     this.state.activities.forEach((v) => {
-      if(v.previous_state_id < state.id) {
+      if (v.previous_state_id < state.id) {
         activities.push(v)
       }
     });
 
-      return this.setStateAsync({
-        tables: state.tables,
-        blocks: state.blocks,
-        constraints: state.constraints,
-        state_id: state.id,
-        predictions: state.predictions,
-        activities: activities,
-        tasks: [],
-        loading_tasks: true
-      })
-          .then(() => this.setStateAsync({loading: false}))
-          .then(this.loadTaskSuggestions.bind(this));
+    return this.setStateAsync({
+      tables: state.tables,
+      blocks: state.blocks,
+      constraints: state.constraints,
+      state_id: state.id,
+      predictions: state.predictions,
+      activities: activities,
+      tasks: [],
+      loading_tasks: true
+    })
+      .then(() => this.setStateAsync({ loading: false }))
+      .then(this.loadTaskSuggestions.bind(this));
   }
 
   loadStateFromId(state_id) {
@@ -190,14 +199,14 @@ export default class SynthAppParent extends React.Component {
   }
 
   loadTaskSuggestions() {
-    this.server_api.getTaskSuggestions(SynthAppParent.getDocumentUrl()).then((tasks) => {
+    this.server_api.getTaskSuggestions(SynthAppParent.getDocumentUrl(), this.graphic_context).then((tasks) => {
       console.log("Tasks", tasks);
-      if(tasks.exception) {
+      if (tasks.exception) {
         console.log(tasks.exception);
       }
       const newState = {
         tasks: tasks.map((t) => {
-          return {id: t.id, name: t.name}
+          return { id: t.id, name: t.name }
         }),
         loading_tasks: false
       };
@@ -210,32 +219,32 @@ export default class SynthAppParent extends React.Component {
     const task_id = task.id;
     const activities = this.state.activities.slice();
     const self = this;
-    this.server_api.executeTask(SynthAppParent.getDocumentUrl(), task_id)
-        .then((newState) => {
-          const activity_index = activities.length;
-          const callback = function () {
-            self.executeActivityAction(activity_index);
-          };
-          activities.push({
-            name: task.name,
-            previous_state_id: newState.previous_id,
-            action: {
-              name: "Undo",
-              callback: callback,
-            }
-          });
-          this.loadState(newState);
-        }).then(() => {
-      this.setStateAsync({activities: activities});
-    });
+    this.server_api.executeTask(SynthAppParent.getDocumentUrl(), task_id, this.graphic_context)
+      .then((newState) => {
+        const activity_index = activities.length;
+        const callback = function () {
+          self.executeActivityAction(activity_index);
+        };
+        activities.push({
+          name: task.name,
+          previous_state_id: newState.previous_id,
+          action: {
+            name: "Undo",
+            callback: callback,
+          }
+        });
+        this.loadState(newState);
+      }).then(() => {
+        this.setStateAsync({ activities: activities });
+      });
   }
 
   executeActivityAction(activity_index) {
     const activity = this.state.activities[activity_index];
     const state_id = activity.previous_state_id;
     const activities = this.state.activities.filter((v, i) => i < activity_index);
-    this.setStateAsync({activities: activities}).then(
-        () => this.loadStateFromId(state_id)
+    this.setStateAsync({ activities: activities }).then(
+      () => this.loadStateFromId(state_id)
     );
   }
 
@@ -284,9 +293,9 @@ export default class SynthAppParent extends React.Component {
     return Office.context.document.url;
   }
 
-  addCurrentSheets(callback=null) {
+  addCurrentSheets(callback = null) {
     var that = this;
-    
+
     // Adds all sheets of the current workbook to the database
     // Ids are stored in this.sheet_ids
 
@@ -314,7 +323,7 @@ export default class SynthAppParent extends React.Component {
         } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) };
       });
 
-      if(callback) {
+      if (callback) {
         callback();
       }
     });

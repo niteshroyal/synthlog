@@ -33,16 +33,18 @@ export default class ServerAPI {
         });
     }
 
-    getTaskSuggestions(filename) {
+    getTaskSuggestions(filename, context) {
         return this.postAndParse("get_tasks", {
-            filename: filename
+            filename: filename,
+            context: context,
         });
     }
 
-    executeTask(filename, task_id) {
+    executeTask(filename, task_id, context) {
         return this.postAndParse("execute_task", {
             filename: filename,
-            task_id: task_id
+            task_id: task_id,
+            context: context,
         });
     }
 
