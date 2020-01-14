@@ -33,8 +33,6 @@ class MetadataPropObject(ABC):
     """
     Class for an object that contains metadata
     """
-
-    @abstractmethod
     def __init__(self, metadata):
         self.metadata = metadata
         self.attributes = dict()
@@ -61,6 +59,21 @@ class MetadataPropObject(ABC):
             if converted is not None:
                 attributes[k] = converted
         return {"metadata": result, "attributes": attributes}
+
+
+class Coordinate:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.address = Coordinate.pos_to_address(x, y)
+
+    @staticmethod
+    def col_to_letter(col):
+        return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[col]
+
+    @staticmethod
+    def pos_to_address(x, y):
+        return f"{Coordinate.col_to_letter(x)}{y + 1}"
 
 
 class FillFormatting:
@@ -160,14 +173,12 @@ class Range(MetadataPropObject):
         prop_dict.update(super().jsonify())
         return prop_dict
 
-    @staticmethod
-    def col_to_letter(col):
-        return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[col]
 
     @staticmethod
     def from_tacle_range(tacle_range: TacleRange):
-        start_letter, end_letter = (Range.col_to_letter(c) for c in (tacle_range.x0, tacle_range.x1 - 1))
-        range_address = f"{start_letter}{tacle_range.y0 + 1}:{end_letter}{tacle_range.y1}"
+        start = Coordinate(tacle_range.x0, tacle_range.y0)
+        end = Coordinate(tacle_range.x1 - 1, tacle_range.y1 - 1)
+        range_address = f"{start.address}:{end.address}"
         return Range(range_address, tacle_range, None, None, [])
 
 
@@ -253,6 +264,23 @@ class State(MetadataPropObject):
         manager.close_db()
 
 
+class Prediction(MetadataPropObject):
+    def __init__(self, coordinate, value, confidence, provenance, metadata):
+        super().__init__(metadata)
+        self.coordinate = coordinate
+        self.value = value
+        self.confidence = confidence
+        self.provenance = provenance
+
+    def jsonify(self):
+        return {
+            "coordinate": self.coordinate,
+            "value": self.value,
+            "confidence": self.confidence,
+            "provenance": self.provenance
+        }
+
+
 class StateConverter:
     def add_to_json(self, state: State, json_dict: dict) -> dict:
         raise NotImplementedError()
@@ -305,6 +333,13 @@ class ConstraintConverter(StateConverter):
                     "is_formula": constraint.template.is_formula(),
                 })
         result = {"constraints": constraints}
+        result.update(json_dict)
+        return result
+
+
+class PredictionConverter(StateConverter):
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        result = {"predictions": [jsonify(o) for o in state.objects if isinstance(o, Prediction)]}
         result.update(json_dict)
         return result
 
