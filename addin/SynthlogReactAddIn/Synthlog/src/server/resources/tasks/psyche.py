@@ -12,7 +12,6 @@ class PsycheTask(BaseTask):
         for table in self.state.tables:
             tacle_range = table.range.tacle_range
             table_data = tacle_range.get_data(data)
-            print(table_data)
             table_indices = np.argwhere(table_data == '')  # (y, x)
             for i in range(table_indices.shape[0]):
                 indices.append(

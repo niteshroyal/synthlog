@@ -272,7 +272,7 @@ class Prediction(MetadataPropObject):
 
     def jsonify(self):
         return {
-            "coordinate": jsonify(self.coordinate),
+            "coordinate": self.coordinate.jsonify(),
             "value": self.value,
             "confidence": self.confidence,
             "provenance": self.provenance,
@@ -342,7 +342,7 @@ class ConstraintConverter(StateConverter):
 class PredictionConverter(StateConverter):
     def add_to_json(self, state: State, json_dict: dict) -> dict:
         result = {
-            "predictions": [jsonify(o) for o in state.objects if type(o) == Prediction]
+            "predictions": [o.jsonify() for o in state.objects]# if type(o) == Prediction]
         }
         result.update(json_dict)
         return result
