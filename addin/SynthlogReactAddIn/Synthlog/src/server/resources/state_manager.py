@@ -352,7 +352,7 @@ class ConstraintConverter(StateConverter):
 
 class PredictionConverter(StateConverter):
     def add_to_json(self, state: State, json_dict: dict) -> dict:
-        result = {"predictions": [jsonify(o) for o in state.objects if isinstance(o, Prediction)]}
+        result = {"predictions": [jsonify(o) for o in state.objects if type(o) == Prediction]}
         result.update(json_dict)
         return result
 
@@ -431,87 +431,3 @@ class StateManager:
 
     def print_state(self, state):
         print(json.dumps(self.jsonify(state)))
-
-
-def api():
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="action")
-
-    action_initialize = "initialize"
-    init_parser = subparsers.add_parser(action_initialize)
-    init_parser.add_argument("filepath", help="Path to the spreadsheet file", type=str)
-
-    action_load = "load"
-    load_parser = subparsers.add_parser(action_load)
-    load_parser.add_argument("state_id", help="The id of the state to be loaded", type=int)
-
-    # parser.add_argument("--create", help="Create a new state", action="store_true")
-    # parser.add_argument(
-    #     "--selection", help="Current selection, as a range (string)", type=str
-    # )
-    # parser.add_argument(
-    #     "--tables",
-    #     help="Tables in the spreadsheet, as a list of ranges. Ranges should be separated with a space",
-    #     type=lambda s: [r for r in s.split(" ")],
-    # )
-    args = parser.parse_args()
-    manager = StateManager()
-
-    try:
-        if args.action == action_initialize:
-            latest_state = manager.get_latest_state()  # TODO Make filename dependent
-
-            if latest_state:
-                manager.print_state(latest_state)
-            else:
-                state = manager.create_empty_state(args.filepath)
-                manager.add_state(state)
-                assert manager.get_latest_state() is not None
-                manager.print_state(state)
-
-        elif args.action == action_load:
-            state = manager.get_state(args.state_id)
-            manager.set_latest(state)
-            manager.print_state(state)
-
-    except Exception as e:
-        print(json.dumps({"exception": traceback.format_exc()}))
-    finally:
-        manager.close_db()
-
-    # if args.create:
-    #     # filepath = args.filepath if args.filepath else ""
-    #     # selection = args.selection if args.selection else ""
-    #     # tables = args.tables if args.tables else []
-    #     # state = State(filepath=filepath, selection=selection, tables=tables)
-    #     filepath = args.filepath if args.filepath else ""
-    #     state = State(filepath=filepath, selection=None, tables=[], objects=[], metadata=[])
-    #     manager = StateManager()
-    #     res = manager.add_state(state)
-    #     print(res)
-    #     manager.close_db()
-    # elif args.initialize:
-    #     try:
-    #         assert args.filepath is not None
-    #         manager = StateManager()
-    #         latest_state = manager.get_latest_state()  # TODO Make filename dependent
-    #
-    #         # print(json.dumps({"exceptionNone": json.dumps([manager.db["latest"], manager.db["latest"] in manager.db])}))
-    #         # exit(0)
-    #
-    #         if latest_state:
-    #             print(json.dumps(manager.jsonify(latest_state)))
-    #         else:
-    #             state = manager.create_empty_state(args.filepath)
-    #             manager.add_state(state)
-    #             assert manager.get_latest_state() is not None
-    #             print(json.dumps(manager.jsonify(state)))
-    #         manager.close_db()
-    #     except Exception as e:
-    #         print(json.dumps({"exception": traceback.format_exc()}))
-    # else:
-    #     print(json.dumps({"args": "none"}))
-
-
-if __name__ == "__main__":
-    api()

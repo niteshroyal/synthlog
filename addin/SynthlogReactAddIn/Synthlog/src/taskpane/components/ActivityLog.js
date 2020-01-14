@@ -10,6 +10,8 @@ export default class ActivityLog extends React.Component {
 
     render() {
         console.log("Activities", this.props.activities);
+        const activities = this.props.activities.slice();
+        activities.reverse();
         return (
             <div id="activity-log">
                 <h3>Activity</h3>

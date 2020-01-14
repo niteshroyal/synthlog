@@ -34,6 +34,9 @@ export default class TacleApp extends SynthAppParent {
                     <p>
                         {this.state.log}{this.state.state_id}
                     </p>
+                    <p>
+                        {JSON.stringify(this.state.predictions)}
+                    </p>
                     <TableViewer
                         parent={this}
                         tables={this.state.tables}

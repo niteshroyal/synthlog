@@ -227,35 +227,13 @@ init_python = function(){
 }
 
 exports.getInitialState = function (filename, res) {
-    console.log("Getting initial state...");
-    const builtin_path = Path.resolve(homedir, 'resources');
-    const options = {
-        mode: 'text',
-        scriptPath: builtin_path,
-        pythonOptions: ['-u'],
-        args: [
-            "initialize", filename,
-        ],
-        pythonPath: process.env.PYTHON_PATH,
-    };
-    PythonShell.run('state_manager.py', options, function (err, results) {
-        if (err) {
-            console.error(err.message);
-            console.error(err.stack);
-            res.setHeader('Content-Type', 'application/json');
-            res.send({ error: err });
-        }
-        else {
-            console.log("Initial state:", results[0]);
-            res.setHeader('Content-Type', 'application/json');
-            res.send(results[0]);
-        }
-    });
+    console.log("Getting initial state for", filename);
+    runScriptDefault("state_api.py", ["initialize", filename], res);
 };
 
 exports.getState = function (state_id, res) {
     console.log("Getting state", state_id);
-    runScriptDefault("state_manager.py", ["load", state_id], res);
+    runScriptDefault("state_api.py", ["load", state_id], res);
 };
 
 function getDefaultOptions(args) {
@@ -270,7 +248,7 @@ function getDefaultOptions(args) {
 }
 
 function runScriptDefault(script_name, args, res) {
-    PythonShell.run('state_manager.py', getDefaultOptions(args), function (err, results) {
+    PythonShell.run(script_name, getDefaultOptions(args), function (err, results) {
         if (err) {
             console.error(err.message);
             console.error(err.stack);
