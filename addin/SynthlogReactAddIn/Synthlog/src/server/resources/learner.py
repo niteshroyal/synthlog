@@ -42,8 +42,8 @@ class TaskManager:
             tacle_tasks.DetectTablesTask(self.state),
             tacle_tasks.DetectBlocksTask(self.state),
             tacle_tasks.TacleTask(self.state),
+            psyche.PsycheTask(self.state),
             ResetTask.ResetTask(self.state),
-            psyche.PsycheTask(self.state)
         ]  # TODO Add MERCS back
         available_tasks = [t for t in task_pool if t.is_available()]
         task_ids = [i + len(self.db) + 1 for i in range(len(available_tasks))]
