@@ -228,10 +228,15 @@ class State(MetadataPropObject):
 
         return new_state
 
-    def add_object(self, object):
+    def add_object(self, an_object):
         new_state = self.copy()
-        new_state.objects.append(object)
+        new_state.objects.append(an_object)
 
+        return new_state
+
+    def add_objects(self, objects):
+        new_state = self.copy()
+        new_state.objects += objects;
         return new_state
 
     def add_selection(self, selection):
