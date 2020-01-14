@@ -30,7 +30,8 @@ export default class SynthAppParent extends React.Component {
       constraints: [],
       tasks: [],
       activities: [],
-      loading_tasks: true
+      loading_tasks: true,
+      predictions: [],
     };
 
     // this.addCurrentSheets();
@@ -155,6 +156,7 @@ export default class SynthAppParent extends React.Component {
         blocks: state.blocks,
         constraints: state.constraints,
         state_id: state.id,
+        predictions: state.predictions,
         activities: activities,
         tasks: [],
         loading_tasks: true

@@ -1,7 +1,7 @@
 import json
 import traceback
 
-from tasks import tacle_tasks, ResetTask
+from tasks import tacle_tasks, ResetTask, psyche
 import shelve
 import argparse
 import os
@@ -42,7 +42,8 @@ class TaskManager:
             tacle_tasks.DetectTablesTask(self.state),
             tacle_tasks.DetectBlocksTask(self.state),
             tacle_tasks.TacleTask(self.state),
-            ResetTask.ResetTask(self.state)
+            ResetTask.ResetTask(self.state),
+            psyche.PsycheTask(self.state)
         ]  # TODO Add MERCS back
         available_tasks = [t for t in task_pool if t.is_available()]
         task_ids = [i + len(self.db) + 1 for i in range(len(available_tasks))]
@@ -61,6 +62,8 @@ if __name__ == "__main__":
     parser.add_argument("--get", help="Gets new tasks", action="store_true")
     parser.add_argument("--execute", help="Execute the task with the given task id")
     parser.add_argument("--state", help="State id of the spreadsheet, retrieved from the state database")
+    parser.add_argument("--dev", help="Execute in development mode (raise exception, pretty print json)",
+                        action="store_true")
     args = parser.parse_args()
 
     learner = None
@@ -93,12 +96,12 @@ if __name__ == "__main__":
             new_state.previous_state_id = learner.state.id
             state_manager.add_state(new_state)
 
-            print(json.dumps(state_manager.jsonify(new_state)))
+            print(json.dumps(state_manager.jsonify(new_state), indent=(4 if args.dev else None)))
             learner.close_db()
     except Exception:
-        print(json.dumps({"exception": traceback.format_exc()}))
+        if args.dev:
+            raise
+        else:
+            print(json.dumps({"exception": traceback.format_exc()}))
     finally:
         state_manager.close_db()
-
-
-
