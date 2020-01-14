@@ -234,9 +234,7 @@ exports.getInitialState = function (filename, res) {
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--initialize",
-            "--filepath",
-            filename,
+            "initialize", filename,
         ],
         pythonPath: process.env.PYTHON_PATH,
     };
@@ -253,8 +251,39 @@ exports.getInitialState = function (filename, res) {
             res.send(results[0]);
         }
     });
-
 };
+
+exports.getState = function (state_id, res) {
+    console.log("Getting state", state_id);
+    runScriptDefault("state_manager.py", ["load", state_id], res);
+};
+
+function getDefaultOptions(args) {
+    const builtin_path = Path.resolve(homedir, 'resources');
+    return {
+        mode: 'text',
+        scriptPath: builtin_path,
+        pythonOptions: ['-u'],
+        args: args,
+        pythonPath: process.env.PYTHON_PATH,
+    };
+}
+
+function runScriptDefault(script_name, args, res) {
+    PythonShell.run('state_manager.py', getDefaultOptions(args), function (err, results) {
+        if (err) {
+            console.error(err.message);
+            console.error(err.stack);
+            res.setHeader('Content-Type', 'application/json');
+            res.send({ error: err });
+        }
+        else {
+            console.log("Initial state:", results[0]);
+            res.setHeader('Content-Type', 'application/json');
+            res.send(results[0]);
+        }
+    });
+}
 
 exports.runScript = function (filename, res) {
     const problog_path = Path.resolve(homedir, 'problog');

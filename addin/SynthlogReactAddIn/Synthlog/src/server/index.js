@@ -80,8 +80,14 @@ app.post('/api/initial_state', async (req, res) => {
     if (req.body) {
         structure.getInitialState(req.body.filename, res);
     }
-}
-);
+});
+
+app.post('/api/get_state', async (req, res) => {
+    console.log(req.body);
+    if (req.body) {
+        structure.getState(req.body.state_id, res);
+    }
+});
 
 app.post('/api/get_tasks', async (req, res) => {
     console.log("Getting tasks suggestions");

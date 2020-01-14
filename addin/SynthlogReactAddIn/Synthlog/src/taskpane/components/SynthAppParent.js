@@ -29,6 +29,8 @@ export default class SynthAppParent extends React.Component {
       blocks: [],
       constraints: [],
       tasks: [],
+      activities: [],
+      loading_tasks: true
     };
 
     // this.addCurrentSheets();
@@ -140,13 +142,30 @@ export default class SynthAppParent extends React.Component {
   }
 
   loadState(state) {
+    console.log("Loading state:", state);
+    const activities = [];
+    this.state.activities.forEach((v) => {
+      if(v.previous_state_id < state.id) {
+        activities.push(v)
+      }
+    });
+
       return this.setStateAsync({
         tables: state.tables,
         blocks: state.blocks,
         constraints: state.constraints,
+        state_id: state.id,
+        activities: activities,
+        tasks: [],
+        loading_tasks: true
       })
           .then(() => this.setStateAsync({loading: false}))
           .then(this.loadTaskSuggestions.bind(this));
+  }
+
+  loadStateFromId(state_id) {
+    console.log("Load state with id:", state_id);
+    return this.server_api.getState(state_id).then(this.loadState.bind(this));
   }
 
   createState() {
@@ -177,17 +196,45 @@ export default class SynthAppParent extends React.Component {
       const newState = {
         tasks: tasks.map((t) => {
           return {id: t.id, name: t.name}
-        })
+        }),
+        loading_tasks: false
       };
       return this.setStateAsync(newState);
     });
   }
 
-  executeTask(task_id) {
-    // TODO Execute task
-    console.log("Execute task", task_id);
+  executeTask(task) {
+    console.log("Execute task", task);
+    const task_id = task.id;
+    const activities = this.state.activities.slice();
+    const self = this;
     this.server_api.executeTask(SynthAppParent.getDocumentUrl(), task_id)
-        .then((newState) => {this.loadState(newState)})
+        .then((newState) => {
+          const activity_index = activities.length;
+          const callback = function () {
+            self.executeActivityAction(activity_index);
+          };
+          activities.push({
+            name: task.name,
+            previous_state_id: newState.previous_id,
+            action: {
+              name: "Undo",
+              callback: callback,
+            }
+          });
+          this.loadState(newState);
+        }).then(() => {
+      this.setStateAsync({activities: activities});
+    });
+  }
+
+  executeActivityAction(activity_index) {
+    const activity = this.state.activities[activity_index];
+    const state_id = activity.previous_state_id;
+    const activities = this.state.activities.filter((v, i) => i < activity_index);
+    this.setStateAsync({activities: activities}).then(
+        () => this.loadStateFromId(state_id)
+    );
   }
 
   getTaskSuggestions() {

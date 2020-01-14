@@ -40,7 +40,8 @@ class DetectBlocksTask(BaseTask):
         data_array = np.array(data, dtype=object)
         type_data = get_type_data(data_array)
 
-        for table in self.state.tables:
+        state = self.state.copy()
+        for table in state.tables:
             if "tacle_range" in table:
                 tacle_range = table["tacle_range"]  # type: tacle.indexing.Range
                 table_data = tacle_range.get_data(data_array)
@@ -53,7 +54,7 @@ class DetectBlocksTask(BaseTask):
                         table_data, tacle_range.get_data(type_data), tacle_range, table.name, supported_orientation
                     )
                     table["tacle_table"] = tacle_table
-        return self.state
+        return state
 
     def undo(self):
         pass

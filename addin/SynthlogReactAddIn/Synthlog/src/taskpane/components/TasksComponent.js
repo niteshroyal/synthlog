@@ -13,20 +13,28 @@ export default class TasksComponent extends React.Component {
 
     render() {
         console.log(this.props.tasks);
-        return (
-            <div id="tasks">
-                <h3>Tasks</h3>
+        let content;
+        if(this.props.loading) {
+            content = (<div>Loading...</div>)
+        } else {
+            content = (
                 <div>
                     {this.props.tasks.map((t) => {
                         return (<p key={"task" + t.id}><Button
                             key={"task_button" + t.id}
                             className='normal-button'
                             buttonType={ButtonType.hero}
-                            onClick={function() {this.props.callback(t.id)}.bind(this)}>
+                            onClick={function() {this.props.callback(t)}.bind(this)}>
                                 {t.name}
                         </Button></p>)
                     })}
                 </div>
+            )
+        }
+        return (
+            <div id="tasks">
+                <h3>Tasks</h3>
+                {content}
             </div>
 
         );
