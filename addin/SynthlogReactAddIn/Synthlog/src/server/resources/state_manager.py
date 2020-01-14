@@ -34,7 +34,7 @@ class MetadataPropObject(ABC):
     Class for an object that contains metadata
     """
     def __init__(self, metadata):
-        self.metadata = metadata
+        self.metadata = metadata if metadata is not None else []
         self.attributes = dict()
 
     def __setitem__(self, key, value):
@@ -61,11 +61,19 @@ class MetadataPropObject(ABC):
         return {"metadata": result, "attributes": attributes}
 
 
-class Coordinate:
+class Coordinate(MetadataPropObject):
     def __init__(self, x, y):
+        super().__init__(None)
         self.x = x
         self.y = y
         self.address = Coordinate.pos_to_address(x, y)
+
+    def jsonify(self):
+        return {
+            "x": self.x,
+            "y": self.y,
+            "address": self.address
+        }
 
     @staticmethod
     def col_to_letter(col):
@@ -236,7 +244,7 @@ class State(MetadataPropObject):
 
     def add_objects(self, objects):
         new_state = self.copy()
-        new_state.objects += objects;
+        new_state.objects += objects
         return new_state
 
     def add_selection(self, selection):
@@ -270,7 +278,7 @@ class State(MetadataPropObject):
 
 
 class Prediction(MetadataPropObject):
-    def __init__(self, coordinate, value, confidence, provenance, metadata):
+    def __init__(self, coordinate, value, confidence, provenance, metadata=None):
         super().__init__(metadata)
         self.coordinate = coordinate
         self.value = value
@@ -279,7 +287,7 @@ class Prediction(MetadataPropObject):
 
     def jsonify(self):
         return {
-            "coordinate": self.coordinate,
+            "coordinate": jsonify(self.coordinate),
             "value": self.value,
             "confidence": self.confidence,
             "provenance": self.provenance
@@ -366,6 +374,7 @@ class StateManager:
             TableConverter(),
             BlockConverter(),
             ConstraintConverter(),
+            PredictionConverter(),
         ]  # type: List[StateConverter]
 
     def load_db(self):

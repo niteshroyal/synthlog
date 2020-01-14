@@ -62,7 +62,8 @@ if __name__ == "__main__":
     parser.add_argument("--get", help="Gets new tasks", action="store_true")
     parser.add_argument("--execute", help="Execute the task with the given task id")
     parser.add_argument("--state", help="State id of the spreadsheet, retrieved from the state database")
-    parser.add_argument("--raise_exc", help="Raise exception instead of silencing it", action="store_true")
+    parser.add_argument("--dev", help="Execute in development mode (raise exception, pretty print json)",
+                        action="store_true")
     args = parser.parse_args()
 
     learner = None
@@ -95,15 +96,12 @@ if __name__ == "__main__":
             new_state.previous_state_id = learner.state.id
             state_manager.add_state(new_state)
 
-            print(json.dumps(state_manager.jsonify(new_state)))
+            print(json.dumps(state_manager.jsonify(new_state), indent=(4 if args.dev else None)))
             learner.close_db()
     except Exception:
-        if args.raise_exc:
+        if args.dev:
             raise
         else:
             print(json.dumps({"exception": traceback.format_exc()}))
     finally:
         state_manager.close_db()
-
-
-

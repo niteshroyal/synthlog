@@ -43,7 +43,12 @@ export default class TacleApp extends SynthAppParent {
                     <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} loading={this.state.loading_tasks}/>
                     <ActivityLog activities={this.state.activities} loadState={this.loadStateFromId.bind(this)} />
                     {/*<TacleComponent />*/}
-                    <ExcelComponent tables={this.state.tables} colors={this.colors} blocks={this.state.blocks} />
+                    <ExcelComponent
+                        tables={this.state.tables}
+                        colors={this.colors}
+                        blocks={this.state.blocks}
+                        predictions={this.state.predictions}
+                    />
                 </div>
             );
         }

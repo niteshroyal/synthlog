@@ -1,7 +1,7 @@
 import tacle
 import numpy as np
 
-from state_manager import State
+from state_manager import State, Prediction, Coordinate
 from .task import BaseTask
 
 
@@ -14,7 +14,9 @@ class PsycheTask(BaseTask):
             table_data = tacle_range.get_data(data)
             table_indices = np.argwhere(table_data == '')  # (y, x)
             for i in range(table_indices.shape[0]):
-                indices.append((tacle_range.x0 + table_indices[i, 1], tacle_range.y0 + table_indices[i, 0]))
+                indices.append(
+                    ((tacle_range.x0 + table_indices[i, 1]).item(),
+                     (tacle_range.y0 + table_indices[i, 0]).item()))
         return indices
 
     def is_available(self):
@@ -22,10 +24,10 @@ class PsycheTask(BaseTask):
         return True
 
     def do(self) -> State:
-        print(self.find_missing_cells())
-
-        exit(0)
-        return self.state
+        predictions = []
+        for x, y in self.find_missing_cells():
+            predictions.append(Prediction(Coordinate(x, y), "VAL", None, "psyche"))
+        return self.state.add_objects(predictions)
 
     def description(self):
         return "Autocomplete"
