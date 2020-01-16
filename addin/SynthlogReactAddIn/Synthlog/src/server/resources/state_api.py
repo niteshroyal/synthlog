@@ -31,15 +31,14 @@ if __name__ == "__main__":
 
     try:
         if args.action == action_initialize:
-            latest_state = manager.get_latest_state()  # TODO Make filename dependent
+            state = manager.get_latest_state()  # TODO Make filename dependent
 
-            if latest_state:
-                manager.print_state(latest_state)
-            else:
+            if state is None:
                 state = manager.create_empty_state(args.filepath)
                 manager.add_state(state)
-                assert manager.get_latest_state() is not None
-                manager.print_state(state)
+                assert state is not None
+
+            manager.print_state(state)
 
         elif args.action == action_load:
             state = manager.get_state(args.state_id)
