@@ -328,23 +328,28 @@ class BlockConverter(StateConverter):
 
 
 class ConstraintConverter(StateConverter):
-    def add_to_json(self, state: State, json_dict: dict) -> dict:
+    @staticmethod
+    def get_constraints(state: State) -> List[Constraint]:
         constraints = []
         for o in state.objects:
             if isinstance(o, dict) and o.get("object_type", None) == "constraint":
-                constraint = Constraint.from_dict(o)
+                constraints.append(Constraint.from_dict(o))
+        return constraints
 
-                constraint_args = dict()
-                for arg_name, arg_value in o["assignment"].items():
-                    tacle_range = TacleRange.from_legacy_bounds(arg_value.bounds)
-                    constraint_args[arg_name] = Range.from_tacle_range(tacle_range)
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        constraints = []
+        for constraint in ConstraintConverter.get_constraints(state):
+            constraint_args = dict()
+            for arg_name, arg_value in constraint.assignment.items():
+                tacle_range = TacleRange.from_legacy_bounds(arg_value.bounds)
+                constraint_args[arg_name] = Range.from_tacle_range(tacle_range)
 
-                constraints.append({
-                    "template_name": constraint.template.name,
-                    "name": constraint.template.to_string({k: v.range_address for k, v in constraint_args.items()}),
-                    "args": {k: v.jsonify() for k, v in constraint_args.items()},
-                    "is_formula": constraint.template.is_formula(),
-                })
+            constraints.append({
+                "template_name": constraint.template.name,
+                "name": constraint.template.to_string({k: v.range_address for k, v in constraint_args.items()}),
+                "args": {k: v.jsonify() for k, v in constraint_args.items()},
+                "is_formula": constraint.template.is_formula(),
+            })
         result = {"constraints": constraints}
         result.update(json_dict)
         return result

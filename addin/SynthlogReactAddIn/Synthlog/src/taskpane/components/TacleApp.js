@@ -7,6 +7,7 @@ import {ExcelComponent} from "./ExcelComponent";
 import TasksComponent from "./TasksComponent";
 import ConstraintsViewer from "./ConstraintsViewer";
 import ActivityLog from "./ActivityLog";
+import PredictionsViewer from "./PredictionsViewer";
 
 
 export default class TacleApp extends SynthAppParent {
@@ -32,10 +33,7 @@ export default class TacleApp extends SynthAppParent {
             return (
                 <div id='main' className='ms-welcome'>
                     <p>
-                        {this.state.log}{this.state.state_id}
-                    </p>
-                    <p>
-                        {JSON.stringify(this.state.predictions)}
+                        {this.state.log}
                     </p>
                     <TableViewer
                         parent={this}
@@ -43,6 +41,7 @@ export default class TacleApp extends SynthAppParent {
                         colors={this.colors}
                     />
                     <ConstraintsViewer constraints={this.state.constraints} />
+                    <PredictionsViewer predictions={this.state.predictions} />
                     <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} loading={this.state.loading_tasks}/>
                     <ActivityLog activities={this.state.activities} loadState={this.loadStateFromId.bind(this)} />
                     {/*<TacleComponent />*/}
