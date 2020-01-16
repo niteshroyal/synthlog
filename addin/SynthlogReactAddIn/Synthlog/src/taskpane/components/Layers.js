@@ -51,7 +51,6 @@ export class TableLayer extends Layer {
         if (new_formatting) {
             this.setStatesync({ tables: table_copies });
         }
-        fetch(`https://localhost:3001/api/log?type=uielems_table&message=${JSON.stringify(uiElems)}`);
 
         return uiElems;
     }
@@ -84,8 +83,6 @@ export class BlockLayer extends Layer {
             }
             uiElems.push(new UIElements.Range(new_range["range_address"], new_range["values"], new_range["formatting"]));
         });
-
-        fetch(`https://localhost:3001/api/log?type=uielems_blocks&message=${JSON.stringify(uiElems)}`);
 
         return uiElems;
     }
@@ -126,5 +123,37 @@ export class BlockTableLayer extends Layer {
 
 
         return uiElems;
+    }
+}
+
+export class PredictionLayer extends Layer {
+    constructor(state) {
+        super(state);
+        this.confidence_colors = ["#a50026", "#d73027", "#f46d43", "#fdae61", "#fee08b", "#ffffbf", "#d9ef8b", "#a6d96a", "#66bd63", "#1a9850", "#006837"];
+    }
+
+    getUIElements() {
+        var uiElems = [];
+        var that = this;
+        this.state.predictions.forEach(pred => {
+            var fill_format = null;
+            if (pred.confidence != null) {
+                fill_format = new UIElements.FillFormatting(that.getConfidenceColor(pred.confidence));
+            }
+            var format = new UIElements.ObjectFormatting(fill_format, null, null);
+            
+            uiElems.push(new UIElements.Cell(pred.coordinate.address, pred.value, format));
+
+        });
+
+        return uiElems;
+    }
+
+    getConfidenceColor(conf) {
+        // Confidence has to be normalized between 0 and 1
+        if (this.confidence_colors >= 1) {
+            return this.confidence_colors[this.confidence_colors.length - 1];
+        }
+        return this.confidence_colors[parseInt(conf * this.confidence_colors.length)];
     }
 }

@@ -83,7 +83,7 @@ export class ExcelRenderer extends React.Component {
 
             if (element instanceof UIElements.Cell) {
                 if (element.value != null) {
-                    range.values = [[element.value]];
+                    rangeExcel.values = [[element.value]];
                 }
             }
         } catch (err) { fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`); }

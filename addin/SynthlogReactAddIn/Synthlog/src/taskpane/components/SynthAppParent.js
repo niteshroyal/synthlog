@@ -1,7 +1,7 @@
 import * as React from 'react';
 import 'isomorphic-fetch';
 import ServerAPI from "./api";
-import { TableLayer, BlockLayer, BlockTableLayer } from "./Layers";
+import { TableLayer, BlockLayer, BlockTableLayer, PredictionLayer } from "./Layers";
 
 const uuidv4 = require('uuid/v4');
 
@@ -35,7 +35,7 @@ export default class SynthAppParent extends React.Component {
       predictions: [],
     };
 
-    this.layers = [new BlockTableLayer(this.state, this.setStatesync.bind(this))];
+    this.layers = [new BlockTableLayer(this.state, this.setStatesync.bind(this)), new PredictionLayer(this.state)];
     this.uiElements = [];
 
     this.graphic_context = {
