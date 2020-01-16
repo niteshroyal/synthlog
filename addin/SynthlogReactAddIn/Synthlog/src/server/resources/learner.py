@@ -9,12 +9,13 @@ from state_manager import StateManager, State
 
 
 class TaskManager:
-    def __init__(self, state):
+    def __init__(self, state, context={}):
         self.tasks_db_path = os.path.join(os.getcwd(), "tasks_db")
         self.actions = {}
         self.load_actions()
         self.state = state
         self.db = None
+        self.context = context
 
         self.load_actions()
 
@@ -53,6 +54,7 @@ class TaskManager:
 
     def execute_task(self, task_id):
         task = self.get_task(task_id)
+        task.set_context(self.context)
         task.state = self.state
         return task.do()
 
@@ -61,20 +63,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--get", help="Gets new tasks", action="store_true")
     parser.add_argument("--execute", help="Execute the task with the given task id")
+    parser.add_argument("--context", help="JSON string representing context")
     parser.add_argument("--state", help="State id of the spreadsheet, retrieved from the state database")
     parser.add_argument("--dev", help="Execute in development mode (raise exception, pretty print json)",
                         action="store_true")
     args = parser.parse_args()
 
     learner = None
+    context = {}
     state_manager = StateManager()
 
     try:
+        if args.context:
+            context = json.loads(args.context)
         if args.get:
             if args.state:
-                learner = TaskManager(args.state)
+                learner = TaskManager(args.state, context)
             else:
-                learner = TaskManager(state_manager.get_latest_state())
+                learner = TaskManager(state_manager.get_latest_state(), context)
             tasks = learner.get_suggested_tasks()
             print(json.dumps(tasks))
             learner.close_db()
@@ -82,11 +88,11 @@ if __name__ == "__main__":
         if args.execute:
 
             if args.state:
-                learner = TaskManager(args.state)
+                learner = TaskManager(args.state, context)
             else:
                 state = state_manager.get_latest_state()
                 assert state is not None
-                learner = TaskManager(state)
+                learner = TaskManager(state, context)
 
             new_state = learner.execute_task(args.execute)
 

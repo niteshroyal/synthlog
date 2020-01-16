@@ -66,7 +66,8 @@ exports.getTasks = function (params, res) {
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--get"//, "--state", state
+            "--get",//, "--state", state
+            "--context", JSON.stringify(params.context)
         ],
         pythonPath: process.env.PYTHON_PATH,
     };
@@ -110,7 +111,8 @@ exports.executeTask = function (params, res) {
         scriptPath: builtin_path,
         pythonOptions: ['-u'],
         args: [
-            "--execute", params.task_id
+            "--execute", params.task_id,
+            "--context", JSON.stringify(params.context)
         ],
         pythonPath: process.env.PYTHON_PATH,
     };

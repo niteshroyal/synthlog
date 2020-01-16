@@ -69,11 +69,7 @@ class Coordinate(MetadataPropObject):
         self.address = Coordinate.pos_to_address(x, y)
 
     def jsonify(self):
-        return {
-            "x": self.x,
-            "y": self.y,
-            "address": self.address
-        }
+        return {"x": self.x, "y": self.y, "address": self.address}
 
     @staticmethod
     def col_to_letter(col):
@@ -167,7 +163,7 @@ class Range(MetadataPropObject):
         metadata: List[Jsonifyable],
     ):
         super().__init__(metadata)
-        self.range_address = range_address # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 cell is selected
+        self.range_address = range_address  # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 cell is selected
         self.tacle_range = tacle_range
         self.formatting = formatting
         self.values = values
@@ -181,7 +177,6 @@ class Range(MetadataPropObject):
         prop_dict.update(super().jsonify())
         return prop_dict
 
-
     @staticmethod
     def from_tacle_range(tacle_range: TacleRange):
         start = Coordinate(tacle_range.x0, tacle_range.y0)
@@ -192,7 +187,11 @@ class Range(MetadataPropObject):
 
 class Table(MetadataPropObject):
     def __init__(
-        self, table_range: Range, name: str, header: Optional[Range] = None, metadata: List[Jsonifyable] = None
+        self,
+        table_range: Range,
+        name: str,
+        header: Optional[Range] = None,
+        metadata: List[Jsonifyable] = None,
     ):
         super().__init__(metadata or [])
         self.range = table_range
@@ -209,18 +208,10 @@ class Table(MetadataPropObject):
         return prop_dict
 
 
-class Selection:
-    def __init__(self, table_range: Range):
-        self.range = table_range
-
-    def jsonify(self):
-        return {"range": self.range.jsonify()}
-
-
 class State(MetadataPropObject):
-    def __init__(self, filepath: str, selection: Optional[Selection], tables: List[Table], objects: List[Jsonifyable]):
+    def __init__(self, filepath: str, tables: List[Table], objects: List[Jsonifyable], metadata):
+        super().__init__(metadata)
         self.filepath = filepath
-        self.selection = selection
         self.tables = tables
         self.objects = objects
         self.id = None
@@ -247,11 +238,6 @@ class State(MetadataPropObject):
         new_state.objects += objects
         return new_state
 
-    def add_selection(self, selection):
-        new_state = self.copy()
-        new_state.selection = selection
-
-        return new_state
     # Add many operations to move from one state to another
 
     def copy(self):
@@ -267,7 +253,6 @@ class State(MetadataPropObject):
             "id": self.id,
             "previous_id": self.previous_state_id,
             "filepath": self.filepath,
-            "selection": self.selection.jsonify() if self.selection else None,
             # "tables": [t.jsonify() for t in self.tables],
         }
 
@@ -290,7 +275,7 @@ class Prediction(MetadataPropObject):
             "coordinate": jsonify(self.coordinate),
             "value": self.value,
             "confidence": self.confidence,
-            "provenance": self.provenance
+            "provenance": self.provenance,
         }
 
 
@@ -301,9 +286,7 @@ class StateConverter:
 
 class TableConverter(StateConverter):
     def add_to_json(self, state: State, json_dict: dict) -> dict:
-        result = {
-            "tables": [t.jsonify() for t in state.tables]
-        }
+        result = {"tables": [t.jsonify() for t in state.tables]}
         result.update(json_dict)
         return result
 
@@ -315,14 +298,16 @@ class BlockConverter(StateConverter):
             if "tacle_table" in table:
                 tacle_table = table["tacle_table"]
                 for block in tacle_table.blocks:
-                    absolute_range = tacle_table.range.relative_to_absolute(block.relative_range)
-                    blocks.append({
-                        "table": table.name,
-                        "range": Range.from_tacle_range(absolute_range).jsonify(),
-                    })
-        result = {
-            "blocks": blocks
-        }
+                    absolute_range = tacle_table.range.relative_to_absolute(
+                        block.relative_range
+                    )
+                    blocks.append(
+                        {
+                            "table": table.name,
+                            "range": Range.from_tacle_range(absolute_range).jsonify(),
+                        }
+                    )
+        result = {"blocks": blocks}
         result.update(json_dict)
         return result
 
@@ -389,7 +374,7 @@ class StateManager:
         self.db.close()
 
     def create_empty_state(self, filename):
-        return State(filepath=filename, selection=None, tables=[], objects=[])
+        return State(filepath=filename, tables=[], objects=[])
 
     def get_latest_state(self) -> Optional[State]:
         if not self._latest_state_loaded:

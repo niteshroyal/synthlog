@@ -27,17 +27,26 @@ export default class TableViewer extends React.Component {
     // var items = this.state.items;
     // const resultCountText = items.length === this._originalItems.length ? '' : ` (${items.length} of ${this._originalItems.length} shown)`;
     //
-
     const tables = this.props.tables.map((item, index) => {
+      try {
+        var table_color = null;
+        if (item.range.formatting != null) {
+          if (item.range.formatting.borders != null) {
+            table_color = Object.values(item.range.formatting.borders)[0].color;
+          }
+        }
+      } catch (err) { fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`); }
+
       return {
         name: item.name,
-        color: this.props.colors[index]
+        color: table_color
       }
     });
 
+
     return (
       <div id="tables">
-          <h3>Tables</h3>
+        <h3>Tables</h3>
         <FocusZone direction={FocusZoneDirection.vertical}>
           {/*<Button className='normal-button' buttonType={ButtonType.hero} onClick={this.detectTables.bind(this)}>Detect tables</Button>*/}
           {/*<TextField label={'Filter by name'} onChange={this._onFilterChanged.bind(this)} />*/}
@@ -77,7 +86,7 @@ export default class TableViewer extends React.Component {
         return response.json();
       })
         .then(function (json) {
-            that.props.loadTablesFn(json.tables)
+          that.props.loadTablesFn(json.tables)
         })
     }
   }
@@ -96,10 +105,10 @@ export default class TableViewer extends React.Component {
       .then(response => response.json())
       .then(async function (json) {
         if (json.table_ranges) {
-            for(let i = 0; i < json.table_ranges.length; i++) {
-                await that.parent.addTableFromRange(json.table_ranges[i]);
-            }
-            that.loadTablesFromDB();
+          for (let i = 0; i < json.table_ranges.length; i++) {
+            await that.parent.addTableFromRange(json.table_ranges[i]);
+          }
+          that.loadTablesFromDB();
           // json.table_ranges.forEach(async (r) => {
           //
           //   // try {
@@ -146,10 +155,10 @@ export default class TableViewer extends React.Component {
 
     return (
       <TextField
-          id={"tableName" + index}
-          defaultValue={item.name}
-          style={textStyle}
-          onChange={this._onChange.bind(this)}
+        id={"tableName" + index}
+        defaultValue={item.name}
+        style={textStyle}
+        onChange={this._onChange.bind(this)}
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
             console.log('Enter key pressed');
