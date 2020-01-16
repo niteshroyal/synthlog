@@ -14,7 +14,7 @@ export default class SynthAppParent extends React.Component {
     this.sqlite_db = "";
 
     this.sheet_ids = new Map(); // dictionary mapping sheet names to their id in the db
-    this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"];
+    // this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"];
 
     this.currentState = { file: "", selection: "", tables: new Map() };
     this.db_is_loaded = false;

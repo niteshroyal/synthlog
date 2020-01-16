@@ -41,7 +41,6 @@ export default class TacleApp extends SynthAppParent {
                     <TableViewer
                         parent={this}
                         tables={this.state.tables}
-                        colors={this.colors}
                     />
                     <ConstraintsViewer constraints={this.state.constraints} />
                     <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} loading={this.state.loading_tasks} />
