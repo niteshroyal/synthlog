@@ -16,20 +16,25 @@ const highlightBorder = function (excel_range, color, border_weight, border_styl
 export class ExcelRenderer extends React.Component {
     constructor(props, context) {
         super(props, context);
+
+        this.modified_cells = [];
     }
 
     render() {
         var that = this;
-        this.clearSheet();
-        // this.clearElements(elements);
-        Excel.run(function (context) {
-            that.props.elements.forEach(element => {
-                that.renderElement(element, context);
-            });
-            return context.sync();
 
-        });
-        return (<div id="excel">
+        this.clearSheet().then(
+            that.clearModifiedCells().then(function () {
+                Excel.run(function (context) {
+                    that.props.elements.forEach(element => {
+                        that.renderElement(element, context);
+                    });
+                    return context.sync();
+
+                });
+            })
+        );
+        return (<div id="excel" >
 
         </div>)
     };
@@ -83,15 +88,17 @@ export class ExcelRenderer extends React.Component {
 
             if (element instanceof UIElements.Cell) {
                 if (element.value != null) {
+                    this.modified_cells.push(element.cell_address);
                     rangeExcel.values = [[element.value]];
                 }
             }
         } catch (err) { fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`); }
     }
 
-    clearElements = async (elements) => {
+    clearElements = async () => {
+        var that = this;
         await Excel.run(function (context) {
-            elements.forEach(element => {
+            that.props.elements.forEach(element => {
                 that.clearElement(element, context);
             });
             return context.sync();
@@ -108,6 +115,23 @@ export class ExcelRenderer extends React.Component {
 
             rangeExcel.clear(Excel.ClearApplyTo.formats);
         }
+    }
+
+    clearModifiedCells = async () => {
+
+        try {
+            var that = this;
+            await Excel.run(function (context) {
+                const sheets = context.workbook.worksheets;
+                const firstSheet = sheets.getActiveWorksheet();
+                that.modified_cells.forEach(cell => {
+                    var rangeExcel = firstSheet.getRange(cell);
+                    rangeExcel.clear("Contents");
+                });
+                return context.sync();
+            });
+            this.modified_cells = [];
+        } catch (err) { fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`); }
     }
 
     async clearSheet() {

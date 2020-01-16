@@ -62,7 +62,14 @@ export default class SynthAppParent extends React.Component {
   renderLayers() {
     var that = this;
     var newUIElems = [];
+
     try {
+      // Update state of all layers, as some of them might modify the state
+      this.layers.forEach(layer => {
+        layer.updateState(that.state);
+      });
+
+      // Get UIElements on new state
       this.state.active_layers.forEach(layer_id => {
         var layer = that.layers[layer_id];
         layer.updateState(that.state);

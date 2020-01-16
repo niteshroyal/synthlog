@@ -23,6 +23,12 @@ export class TableLayer extends Layer {
         this.description = "Table Layer"
     }
 
+    updateState(state){
+        super.updateState(state);
+
+        this.getUIElements();// We do this to update the state, without passing the ui elements
+    }
+
     getUIElements() {
         var uiElems = [];
 
