@@ -1,5 +1,4 @@
 import * as React from 'react';
-import SynthAppParent from "./SynthAppParent";
 
 const highlightInternal = function (excel_range, color, border_weight = "Thick") {
     const border_style = "Continuous";
@@ -10,13 +9,6 @@ const highlightInternal = function (excel_range, color, border_weight = "Thick")
         excel_range.format.borders.getItem(b).weight = border_weight;
     });
 };
-
-function setValue(sheet, address, value, confidence) {
-    const range = sheet.getRange(address);
-    range.values = [[ value ]];
-    // TODO Add confidence coloring
-    // range.format.font.color = "white";
-}
 
 
 export class ExcelComponent extends React.Component {
@@ -64,8 +56,7 @@ export class ExcelComponent extends React.Component {
     shouldComponentUpdate(nextProps) {
         return JSON.stringify(nextProps.tables) !== JSON.stringify(this.props.tables)
             || JSON.stringify(nextProps.colors) !== JSON.stringify(this.props.colors)
-            || JSON.stringify(nextProps.blocks) !== JSON.stringify(this.props.blocks)
-            || JSON.stringify(nextProps.predictions) !== JSON.stringify(this.props.predictions);
+            || JSON.stringify(nextProps.blocks) !== JSON.stringify(this.props.blocks);
     }
 
     render() {
@@ -77,7 +68,6 @@ export class ExcelComponent extends React.Component {
 
         const tables = this.props.tables;
         const blocks = this.props.blocks;
-        const predictions = this.props.predictions;
         const colors = this.props.colors;
 
         Excel.run(function (context) {
@@ -98,10 +88,6 @@ export class ExcelComponent extends React.Component {
                 const excel_range = firstSheet.getRange(table.range.range_address);
                 highlightInternal(excel_range, color);
             }
-
-            predictions.forEach((pred, i) => {
-                setValue(firstSheet, pred.coordinate.address, pred.value, pred.confidence)
-            });
 
             return context.sync();
         });

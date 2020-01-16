@@ -1,6 +1,7 @@
 import * as React from 'react';
 import 'isomorphic-fetch';
 import ServerAPI from "./api";
+import { TableLayer, BlockLayer, BlockTableLayer } from "./Layers";
 
 const uuidv4 = require('uuid/v4');
 
@@ -34,6 +35,9 @@ export default class SynthAppParent extends React.Component {
       predictions: [],
     };
 
+    this.layers = [new BlockTableLayer(this.state, this.setStatesync.bind(this))];
+    this.uiElements = [];
+
     this.graphic_context = {
       selection: "",
     }
@@ -52,6 +56,19 @@ export default class SynthAppParent extends React.Component {
     );
   }
 
+  renderLayers() {
+    var that = this;
+    var newUIElems = [];
+    try {
+      this.layers.forEach(layer => {
+        layer.updateState(that.state);
+        var layerUiElements = layer.getUIElements();
+        newUIElems = newUIElems.concat(layerUiElements);
+      });
+      this.uiElements = newUIElems;
+    } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) }
+  }
+
   setStateAsync(newState) {
     console.log("Setting new state", newState);
     return new Promise(function (resolve, reject) {
@@ -59,6 +76,10 @@ export default class SynthAppParent extends React.Component {
         resolve();
       });
     }.bind(this));
+  }
+
+  setStatesync(newState) {
+    this.setState(newState);
   }
 
   componentDidMount() {
