@@ -4,6 +4,7 @@ export class Layer {
     constructor(state) {
         this.state = state;
         this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"];
+        this.description = "Basic Layer"
     }
 
     updateState(state) {
@@ -19,6 +20,7 @@ export class TableLayer extends Layer {
     constructor(state, setStatesync) {
         super(state);
         this.setStatesync = setStatesync;
+        this.description = "Table Layer"
     }
 
     getUIElements() {
@@ -59,6 +61,7 @@ export class TableLayer extends Layer {
 export class BlockLayer extends Layer {
     constructor(state) {
         super(state);
+        this.description = "Block Layer"
     }
 
     getUIElements() {
@@ -104,6 +107,7 @@ export class BlockTableLayer extends Layer {
         super(state);
         this.table_layer = new TableLayer(state, setStatesync);
         this.block_layer = new BlockLayer(state);
+        this.description = "Table adn Block Layer"
     }
 
     updateState(state) {
@@ -130,6 +134,7 @@ export class PredictionLayer extends Layer {
     constructor(state) {
         super(state);
         this.confidence_colors = ["#a50026", "#d73027", "#f46d43", "#fdae61", "#fee08b", "#ffffbf", "#d9ef8b", "#a6d96a", "#66bd63", "#1a9850", "#006837"];
+        this.description = "Prediction Layer";
     }
 
     getUIElements() {

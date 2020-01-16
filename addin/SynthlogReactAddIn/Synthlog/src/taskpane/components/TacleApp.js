@@ -7,6 +7,7 @@ import { ExcelRenderer } from "./ExcelRenderer";
 import TasksComponent from "./TasksComponent";
 import ConstraintsViewer from "./ConstraintsViewer";
 import ActivityLog from "./ActivityLog";
+import LayersViewer from "./LayersViewer";
 
 
 export default class TacleApp extends SynthAppParent {
@@ -48,6 +49,7 @@ export default class TacleApp extends SynthAppParent {
                     <ExcelRenderer
                         elements={this.uiElements}
                     />
+                    <LayersViewer layers={this.layers} active_layers={this.state.active_layers} update_state_func={this.setStatesync.bind(this)}/>
                     {/*<TacleComponent />*/}
                     {/* <ExcelComponent
                         tables={this.state.tables}

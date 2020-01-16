@@ -19,6 +19,9 @@ export default class SynthAppParent extends React.Component {
     this.currentState = { file: "", selection: "", tables: new Map() };
     this.db_is_loaded = false;
 
+    this.layers = [new BlockLayer(this.state), new TableLayer(this.state,this.setStatesync.bind(this)), new PredictionLayer(this.state)];
+    var active_layers = this.layers.map(function(val, index){return index});
+
     this.state = {
       state_id: -1,
       tasks_suggestions: [],
@@ -33,9 +36,9 @@ export default class SynthAppParent extends React.Component {
       activities: [],
       loading_tasks: true,
       predictions: [],
+      active_layers: active_layers,
     };
 
-    this.layers = [new BlockTableLayer(this.state, this.setStatesync.bind(this)), new PredictionLayer(this.state)];
     this.uiElements = [];
 
     this.graphic_context = {
@@ -60,7 +63,8 @@ export default class SynthAppParent extends React.Component {
     var that = this;
     var newUIElems = [];
     try {
-      this.layers.forEach(layer => {
+      this.state.active_layers.forEach(layer_id => {
+        var layer = that.layers[layer_id];
         layer.updateState(that.state);
         var layerUiElements = layer.getUIElements();
         newUIElems = newUIElems.concat(layerUiElements);
@@ -118,7 +122,6 @@ export default class SynthAppParent extends React.Component {
 
   sheetChangeHandler(event) {
     var that = this;
-    fetch(`${that.api}/log?type=event&message=Changeevent!`)
     return Excel.run(function (context) {
       return context.sync()
         .then(function () {
@@ -131,8 +134,6 @@ export default class SynthAppParent extends React.Component {
   sheetSelectionChangeHandler(event) {
     var that = this;
     try {
-      fetch(`${that.api}/log?type=Selectionevent&message=Changeevent!`);
-
       that.graphic_context.selection = event.address;
       fetch(`${that.api}/log?type=context&message=${that.graphic_context.selection}`);
     } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) }
