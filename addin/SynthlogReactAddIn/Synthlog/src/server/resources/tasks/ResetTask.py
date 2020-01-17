@@ -1,7 +1,5 @@
-from tacle import ranges_from_csv
-
 from .task import BaseTask
-from state_manager import Table, Range, State
+from state_manager import State
 
 
 class ResetTask(BaseTask):
@@ -9,11 +7,10 @@ class ResetTask(BaseTask):
         super().__init__(state)
 
     def do(self):
-        return None
+        return self.state.empty_copy()
 
     def undo(self):
         pass
 
     def description(self):
         return "Reset"
-

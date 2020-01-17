@@ -1,9 +1,7 @@
 import shelve
-import argparse
 import os
 import json
 import copy
-import traceback
 from typing import List, Dict, Optional, Any
 
 from abc import ABC, abstractmethod
@@ -33,6 +31,7 @@ class MetadataPropObject(ABC):
     """
     Class for an object that contains metadata
     """
+
     def __init__(self, metadata):
         self.metadata = metadata if metadata is not None else []
         self.attributes = dict()
@@ -159,11 +158,13 @@ class Range(MetadataPropObject):
         range_address: str,
         tacle_range: TacleRange,
         values,
-        formatting: ObjectFormatting,
+        formatting: Optional[ObjectFormatting],
         metadata: List[Jsonifyable],
     ):
         super().__init__(metadata)
-        self.range_address = range_address  # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 cell is selected
+        self.range_address = (
+            range_address
+        )  # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 cell is selected
         self.tacle_range = tacle_range
         self.formatting = formatting
         self.values = values
@@ -209,7 +210,9 @@ class Table(MetadataPropObject):
 
 
 class State(MetadataPropObject):
-    def __init__(self, filepath: str, tables: List[Table], objects: List[Jsonifyable], metadata):
+    def __init__(
+        self, filepath: str, tables: List[Table], objects: List[Jsonifyable], metadata
+    ):
         super().__init__(metadata)
         self.filepath = filepath
         self.tables = tables
@@ -260,6 +263,9 @@ class State(MetadataPropObject):
         manager = StateManager(db_path=db_path)
         res = manager.add_state(self)
         manager.close_db()
+
+    def empty_copy(self):
+        return State(filepath=self.filepath, tables=[], objects=[], metadata=None)
 
 
 class Prediction(MetadataPropObject):
@@ -329,12 +335,16 @@ class ConstraintConverter(StateConverter):
                 tacle_range = TacleRange.from_legacy_bounds(arg_value.bounds)
                 constraint_args[arg_name] = Range.from_tacle_range(tacle_range)
 
-            constraints.append({
-                "template_name": constraint.template.name,
-                "name": constraint.template.to_string({k: v.range_address for k, v in constraint_args.items()}),
-                "args": {k: v.jsonify() for k, v in constraint_args.items()},
-                "is_formula": constraint.template.is_formula(),
-            })
+            constraints.append(
+                {
+                    "template_name": constraint.template.name,
+                    "name": constraint.template.to_string(
+                        {k: v.range_address for k, v in constraint_args.items()}
+                    ),
+                    "args": {k: v.jsonify() for k, v in constraint_args.items()},
+                    "is_formula": constraint.template.is_formula(),
+                }
+            )
         result = {"constraints": constraints}
         result.update(json_dict)
         return result
@@ -342,7 +352,9 @@ class ConstraintConverter(StateConverter):
 
 class PredictionConverter(StateConverter):
     def add_to_json(self, state: State, json_dict: dict) -> dict:
-        result = {"predictions": [jsonify(o) for o in state.objects if type(o) == Prediction]}
+        result = {
+            "predictions": [jsonify(o) for o in state.objects if type(o) == Prediction]
+        }
         result.update(json_dict)
         return result
 
@@ -373,8 +385,9 @@ class StateManager:
     def close_db(self):
         self.db.close()
 
-    def create_empty_state(self, filename):
-        return State(filepath=filename, tables=[], objects=[])
+    @staticmethod
+    def create_empty_state(filename):
+        return State(filepath=filename, tables=[], objects=[], metadata=None)
 
     def get_latest_state(self) -> Optional[State]:
         if not self._latest_state_loaded:
