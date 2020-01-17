@@ -6,7 +6,7 @@ from tacle.convert import orientation_compatible
 
 from tacle_state import tacle_range_to_state_range
 from .task import BaseTask
-from state_manager import Table, State
+from state_manager import Table as StateTable, State
 
 
 class DetectTablesTask(BaseTask):
@@ -14,7 +14,9 @@ class DetectTablesTask(BaseTask):
         table_ranges = tacle.ranges_from_csv(self.state.filepath)
         new_state = self.state
         for i, tacle_range in enumerate(table_ranges):
-            table = Table(tacle_range_to_state_range(tacle_range), f"Table {i + 1}")
+            table = StateTable(
+                tacle_range_to_state_range(tacle_range), f"Table {i + 1}"
+            )
             table["tacle_range"] = tacle_range
             new_state = new_state.add_table(table)
         return new_state
