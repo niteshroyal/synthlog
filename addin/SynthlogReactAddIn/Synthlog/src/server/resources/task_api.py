@@ -1,6 +1,7 @@
 import argparse
 import json
 import traceback
+import logging
 
 from task_manager import TaskManager
 from state_manager import StateManager
@@ -29,6 +30,9 @@ if __name__ == "__main__":
 
     task_manager = None
     state_manager = StateManager()
+
+    if args.dev:
+        logging.basicConfig(level=logging.DEBUG)
 
     # noinspection PyBroadException
     try:
