@@ -6,8 +6,8 @@ from typing import List, Dict, Optional, Any
 
 from abc import ABC, abstractmethod
 
-from tacle import Constraint
-from tacle.indexing import Range as TacleRange
+# from tacle import Constraint
+# from tacle.indexing import Range as TacleRange
 
 
 class Jsonifyable(ABC):
@@ -72,6 +72,7 @@ class Coordinate(MetadataPropObject):
 
     @staticmethod
     def col_to_letter(col):
+        # noinspection SpellCheckingInspection
         return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[col]
 
     @staticmethod
@@ -156,16 +157,14 @@ class Range(MetadataPropObject):
     def __init__(
         self,
         range_address: str,
-        tacle_range: TacleRange,
         values,
         formatting: Optional[ObjectFormatting],
         metadata: List[Jsonifyable],
     ):
         super().__init__(metadata)
-        self.range_address = (
-            range_address
-        )  # Current selection in the spreadsheet, represented as an Excel range (a string): A2:B4 for example, or A2 if only 1 cell is selected
-        self.tacle_range = tacle_range
+        # Current selection in the spreadsheet, represented as an Excel range (a string):
+        # A2:B4 for example, or A2 if only 1 cell is selected
+        self.range_address = range_address
         self.formatting = formatting
         self.values = values
 
@@ -177,13 +176,6 @@ class Range(MetadataPropObject):
         }
         prop_dict.update(super().jsonify())
         return prop_dict
-
-    @staticmethod
-    def from_tacle_range(tacle_range: TacleRange):
-        start = Coordinate(tacle_range.x0, tacle_range.y0)
-        end = Coordinate(tacle_range.x1 - 1, tacle_range.y1 - 1)
-        range_address = f"{start.address}:{end.address}"
-        return Range(range_address, tacle_range, None, None, [])
 
 
 class Table(MetadataPropObject):
@@ -263,6 +255,7 @@ class State(MetadataPropObject):
         manager = StateManager(db_path=db_path)
         res = manager.add_state(self)
         manager.close_db()
+        return res
 
     def empty_copy(self):
         return State(filepath=self.filepath, tables=[], objects=[], metadata=None)
@@ -287,65 +280,20 @@ class Prediction(MetadataPropObject):
 
 class StateConverter:
     def add_to_json(self, state: State, json_dict: dict) -> dict:
+        """
+        A state converter takes a state and a intermediate conversion (json-dict) of that state and manipulates the
+        intermediate converted json-dict.  It returns the result of its manipulation and might modify the input
+        json-dict.
+        :param state:  The state to be converted
+        :param json_dict:  The (intermediate) JSON representation of the state
+        :return:  An updated JSON representation of the state
+        """
         raise NotImplementedError()
 
 
 class TableConverter(StateConverter):
     def add_to_json(self, state: State, json_dict: dict) -> dict:
         result = {"tables": [t.jsonify() for t in state.tables]}
-        result.update(json_dict)
-        return result
-
-
-class BlockConverter(StateConverter):
-    def add_to_json(self, state: State, json_dict: dict) -> dict:
-        blocks = []
-        for table in state.tables:
-            if "tacle_table" in table:
-                tacle_table = table["tacle_table"]
-                for block in tacle_table.blocks:
-                    absolute_range = tacle_table.range.relative_to_absolute(
-                        block.relative_range
-                    )
-                    blocks.append(
-                        {
-                            "table": table.name,
-                            "range": Range.from_tacle_range(absolute_range).jsonify(),
-                        }
-                    )
-        result = {"blocks": blocks}
-        result.update(json_dict)
-        return result
-
-
-class ConstraintConverter(StateConverter):
-    @staticmethod
-    def get_constraints(state: State) -> List[Constraint]:
-        constraints = []
-        for o in state.objects:
-            if isinstance(o, dict) and o.get("object_type", None) == "constraint":
-                constraints.append(Constraint.from_dict(o))
-        return constraints
-
-    def add_to_json(self, state: State, json_dict: dict) -> dict:
-        constraints = []
-        for constraint in ConstraintConverter.get_constraints(state):
-            constraint_args = dict()
-            for arg_name, arg_value in constraint.assignment.items():
-                tacle_range = TacleRange.from_legacy_bounds(arg_value.bounds)
-                constraint_args[arg_name] = Range.from_tacle_range(tacle_range)
-
-            constraints.append(
-                {
-                    "template_name": constraint.template.name,
-                    "name": constraint.template.to_string(
-                        {k: v.range_address for k, v in constraint_args.items()}
-                    ),
-                    "args": {k: v.jsonify() for k, v in constraint_args.items()},
-                    "is_formula": constraint.template.is_formula(),
-                }
-            )
-        result = {"constraints": constraints}
         result.update(json_dict)
         return result
 
@@ -374,10 +322,16 @@ class StateManager:
 
         self.converters = [
             TableConverter(),
-            BlockConverter(),
-            ConstraintConverter(),
             PredictionConverter(),
         ]  # type: List[StateConverter]
+
+        try:
+            import tacle_state
+
+            self.converters.append(tacle_state.BlockConverter())
+            self.converters.append(tacle_state.ConstraintConverter())
+        except ImportError:
+            pass
 
     def load_db(self):
         self.db = shelve.open(self.state_db_path, writeback=True)

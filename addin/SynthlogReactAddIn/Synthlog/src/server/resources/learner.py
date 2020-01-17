@@ -99,6 +99,7 @@ if __name__ == "__main__":
     context = {}
     state_manager = StateManager()
 
+    # noinspection PyBroadException
     try:
         if args.context:
             context = json.loads(args.context)
