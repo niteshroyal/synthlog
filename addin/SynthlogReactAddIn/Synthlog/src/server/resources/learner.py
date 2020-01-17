@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
             print(
                 json.dumps(
-                    state_manager.jsonify(new_state), indent=(4 if args.dev else None)
+                    state_manager.jsonify(new_state), indent=(3 if args.dev else None)
                 )
             )
             learner.close_db()
