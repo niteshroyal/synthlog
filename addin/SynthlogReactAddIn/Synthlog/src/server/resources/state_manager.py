@@ -343,7 +343,7 @@ class StateManager:
     def create_empty_state(filename):
         return State(filepath=filename, tables=[], objects=[], metadata=None)
 
-    def get_latest_state(self) -> Optional[State]:
+    def get_latest_state(self, file_path: str) -> Optional[State]:
         if not self._latest_state_loaded:
             self.load_latest_state()
             self._latest_state_loaded = True

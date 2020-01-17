@@ -11,30 +11,26 @@ if __name__ == "__main__":
 
     action_initialize = "initialize"
     init_parser = subparsers.add_parser(action_initialize)
-    init_parser.add_argument("filepath", help="Path to the spreadsheet file", type=str)
+    init_parser.add_argument("file_path", help="Path to the spreadsheet file", type=str)
 
     action_load = "load"
     load_parser = subparsers.add_parser(action_load)
-    load_parser.add_argument("state_id", help="The id of the state to be loaded", type=int)
+    load_parser.add_argument(
+        "state_id", help="The id of the state to be loaded", type=int
+    )
 
-    # parser.add_argument("--create", help="Create a new state", action="store_true")
-    # parser.add_argument(
-    #     "--selection", help="Current selection, as a range (string)", type=str
-    # )
-    # parser.add_argument(
-    #     "--tables",
-    #     help="Tables in the spreadsheet, as a list of ranges. Ranges should be separated with a space",
-    #     type=lambda s: [r for r in s.split(" ")],
-    # )
     args = parser.parse_args()
     manager = StateManager()
 
+    # noinspection PyBroadException
     try:
         if args.action == action_initialize:
-            state = manager.get_latest_state()  # TODO Make filename dependent
+            state = manager.get_latest_state(
+                args.file_path
+            )  # TODO Make filename dependent
 
             if state is None:
-                state = manager.create_empty_state(args.filepath)
+                state = manager.create_empty_state(args.file_path)
                 manager.add_state(state)
                 assert state is not None
 

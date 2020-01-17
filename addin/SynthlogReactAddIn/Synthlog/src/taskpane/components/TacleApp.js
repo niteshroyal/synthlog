@@ -3,7 +3,7 @@ import 'isomorphic-fetch';
 import SynthAppParent from './SynthAppParent';
 import TableViewer from './TableViewer';
 // import {TacleComponent} from "./TacleComponent";
-import { ExcelRenderer } from "./ExcelRenderer";
+import {ExcelRenderer} from "./ExcelRenderer";
 import TasksComponent from "./TasksComponent";
 import ConstraintsViewer from "./ConstraintsViewer";
 import ActivityLog from "./ActivityLog";
@@ -31,7 +31,6 @@ export default class TacleApp extends SynthAppParent {
                 </div>
             )
         } else {
-            super.renderLayers();
             return (
                 <div id='main' className='ms-welcome'>
                     <p>
@@ -41,14 +40,16 @@ export default class TacleApp extends SynthAppParent {
                         parent={this}
                         tables={this.state.tables}
                     />
-                    <ConstraintsViewer constraints={this.state.constraints} />
-                    <PredictionsViewer predictions={this.state.predictions} />
-                    <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)} loading={this.state.loading_tasks} />
-                    <ActivityLog activities={this.state.activities} loadState={this.loadStateFromId.bind(this)} />
+                    <ConstraintsViewer constraints={this.state.constraints}/>
+                    <PredictionsViewer predictions={this.state.predictions}/>
+                    <TasksComponent tasks={this.state.tasks} callback={this.executeTask.bind(this)}
+                                    loading={this.state.loading_tasks}/>
+                    <ActivityLog activities={this.state.activities} loadState={this.loadStateFromId.bind(this)}/>
                     <ExcelRenderer
-                        elements={this.uiElements}
+                        elements={this.state.ui_elements}
                     />
-                    <LayersViewer layers={this.layers} active_layers={this.state.active_layers} update_state_func={this.setStatesync.bind(this)}/>
+                    <LayersViewer layers={this.layers} active_layers={this.state.active_layers}
+                                  set_active_layers_callback={this.setActiveLayers.bind(this)}/>
                     {/*<TacleComponent />*/}
                     {/* <ExcelComponent
                         tables={this.state.tables}

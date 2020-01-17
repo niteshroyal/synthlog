@@ -3,9 +3,9 @@ from state_manager import State
 
 
 class BaseTask(ABC):
-    def __init__(self, state: State):
+    def __init__(self, state: State, context: dict):
         self.state = state
-        self.context = {}
+        self.context = context
 
     def is_available(self) -> bool:
         return True

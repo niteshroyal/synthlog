@@ -1,14 +1,11 @@
 import * as React from 'react';
 import { FocusZone, FocusZoneDirection } from 'office-ui-fabric-react/lib/FocusZone';
 import { List } from 'office-ui-fabric-react/lib/List';
-import { Label, Toggle } from "office-ui-fabric-react";
+import { Toggle } from "office-ui-fabric-react";
 
 export default class LayersViewer extends React.Component {
     constructor(props, context) {
         super(props, context);
-        this.state = {
-            active_layers: this.props.active_layers
-        }
     }
 
     render() {
@@ -37,7 +34,7 @@ export default class LayersViewer extends React.Component {
 
     onChange(event, checked, index) {
         try {
-            var current_active_layers = this.state.active_layers.slice();
+            var current_active_layers = this.props.active_layers.slice();
             if (checked) {
                 current_active_layers.push(index);
             }
@@ -48,8 +45,7 @@ export default class LayersViewer extends React.Component {
                 }
             }
             current_active_layers.sort();
-            this.setState({ active_layers: current_active_layers });
-            this.props.update_state_func({ active_layers: current_active_layers });
+            this.props.set_active_layers_callback(current_active_layers);
         } catch (err) { fetch(`https://localhost:3001/api/log?type=${err.name}&message=${err.message}`); }
 
     }

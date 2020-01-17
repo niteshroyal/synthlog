@@ -21,6 +21,7 @@ export class ExcelRenderer extends React.Component {
     }
 
     render() {
+        console.log("RENDER", this.props.elements);
         var that = this;
 
         this.clearSheet().then(

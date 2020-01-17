@@ -93,7 +93,7 @@ app.post('/api/get_tasks', async (req, res) => {
     console.log("Getting tasks suggestions");
     console.log(req.body);
     if (req.body) {
-        predictors.getTasks(req.body, res);
+        predictors.getTasks(req.body.state_id, req.body.context, res);
     }
 }
 );
@@ -102,7 +102,7 @@ app.post('/api/execute_task', async (req, res) => {
     console.log("Executing task");
     console.log(req.body);
     if (req.body) {
-        predictors.executeTask(req.body, res);
+        predictors.executeTask(req.body.task_id, res);
     }
 }
 );

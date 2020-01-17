@@ -7,6 +7,7 @@ const { PythonShell } = require('python-shell');
 const Process = require('process');
 var ncp = require('ncp').ncp;
 require('dotenv').config();
+const tools = require("./tools");
 
 var homedir = Path.resolve(Os.homedir(), ".SynthLogBackEnd");
 var inited = false;
@@ -77,7 +78,7 @@ function generateTypes(cells) {
 exports.generateParameters = function (parameters) {
     const cells = generateCells(parameters.cells);
     const types = generateTypes(parameters.cells);
-    terms = generateTermStrings('cell', cells, false, types);
+    let terms = generateTermStrings('cell', cells, false, types);
     for (var key in parameters) {
         if (!["cells", "script", "homedir"].includes(key)) {
             if (Array.isArray(parameters[key]))
@@ -91,13 +92,13 @@ exports.generateParameters = function (parameters) {
                     terms += generateTermStrings(
                         k,
                         parameters["homedir"][k],
-                        fromhome = true
+                        true
                     );
                 else
                     terms += generateTermStrings(
                         k,
                         [[parameters["homedir"][k]]],
-                        fromhome = true
+                        true
                     );
             }
         }
@@ -107,7 +108,7 @@ exports.generateParameters = function (parameters) {
 }
 
 function generateTermStrings(key, values, fromhome = false, types = []) {
-    terms = "";
+    let terms = "";
     values.forEach((element, i) => {
         args = "";
         var addTerm = true;
@@ -207,7 +208,7 @@ exports.init = function (res) {
         if (!FileSystem.existsSync(synthlog_path))
             importSynthlog();
         init_builtin();
-        init_python()
+        init_python();
 
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: true }));
@@ -218,50 +219,23 @@ exports.init = function (res) {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({ init: false }));
     }
-}
+};
 
 
-init_python = function(){
+function init_python(){
     // See for python env
     // nodeCmd.get('virtualenv ', (err, data, stderr) => console.log(data));
 }
 
 exports.getInitialState = function (filename, res) {
     console.log("Getting initial state for", filename);
-    runScriptDefault("state_api.py", ["initialize", filename], res);
+    tools.runScriptDefault("state_api.py", ["initialize", filename], res);
 };
 
 exports.getState = function (state_id, res) {
     console.log("Getting state", state_id);
-    runScriptDefault("state_api.py", ["load", state_id], res);
+    tools.runScriptDefault("state_api.py", ["load", state_id], res);
 };
-
-function getDefaultOptions(args) {
-    const builtin_path = Path.resolve(homedir, 'resources');
-    return {
-        mode: 'text',
-        scriptPath: builtin_path,
-        pythonOptions: ['-u'],
-        args: args,
-        pythonPath: process.env.PYTHON_PATH,
-    };
-}
-
-function runScriptDefault(script_name, args, res) {
-    PythonShell.run(script_name, getDefaultOptions(args), function (err, results) {
-        if (err) {
-            console.error(err.message);
-            console.error(err.stack);
-            res.setHeader('Content-Type', 'application/json');
-            res.send({ error: err });
-        }
-        else {
-            console.log("Initial state:", results[0]);
-            res.setHeader('Content-Type', 'application/json');
-            res.send(results[0]);
-        }
-    });
-}
 
 exports.runScript = function (filename, res) {
     const problog_path = Path.resolve(homedir, 'problog');
@@ -321,7 +295,7 @@ exports.runScript = function (filename, res) {
             var output = {
                 output: result_format ? result_output : results,
                 theories: Array.from(theories)
-            }
+            };
             if (active != null)
                 output.active = active;
             res.send(output);
@@ -356,10 +330,10 @@ exports.detect_tables = function (csv_file, res) {
                 // Tacle indices are 0 based, excel is 1 based, hence the +1
                 // But end indices seem to be 1 based in Tacle??
                 if (m) {
-                    begin_row = parseInt(m[1]) + 1;
-                    end_row = parseInt(m[2]);
-                    begin_col = columnToLetter(parseInt(m[3]) + 1);
-                    end_col = columnToLetter(parseInt(m[4]));
+                    const begin_row = parseInt(m[1]) + 1;
+                    const end_row = parseInt(m[2]);
+                    const begin_col = columnToLetter(parseInt(m[3]) + 1);
+                    const end_col = columnToLetter(parseInt(m[4]));
                     result_output.push(begin_col + begin_row + ":" + end_col + end_row);
                 }
             });

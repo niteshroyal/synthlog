@@ -1,7 +1,7 @@
 import * as React from 'react';
 import 'isomorphic-fetch';
 import ServerAPI from "./api";
-import { TableLayer, BlockLayer, BlockTableLayer, PredictionLayer } from "./Layers";
+import {BlockLayer, PredictionLayer, TableLayer} from "./Layers";
 
 const uuidv4 = require('uuid/v4');
 
@@ -10,16 +10,14 @@ export default class SynthAppParent extends React.Component {
     super(props, context);
     this.server_api = new ServerAPI();
     this.api = 'https://localhost:3001/api';
-    this.objects_db = "";
     this.sqlite_db = "";
 
     this.sheet_ids = new Map(); // dictionary mapping sheet names to their id in the db
     // this.colors = ["#4c78a8", "#f58518", "#e45756", "#72b7b2", "#54a24b", "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac"];
 
-    this.currentState = { file: "", selection: "", tables: new Map() };
     this.db_is_loaded = false;
 
-    this.layers = [new BlockLayer(this.state), new TableLayer(this.state,this.setStatesync.bind(this)), new PredictionLayer(this.state)];
+    this.layers = [new BlockLayer(), new TableLayer(), new PredictionLayer()];
     var active_layers = this.layers.map(function(val, index){return index});
 
     this.state = {
@@ -37,17 +35,14 @@ export default class SynthAppParent extends React.Component {
       loading_tasks: true,
       predictions: [],
       active_layers: active_layers,
+      ui_elements: [],
+      graphic_context: {
+        selection: "",
+      }
     };
-
-    this.uiElements = [];
-
-    this.graphic_context = {
-      selection: "",
-    }
 
     // this.addCurrentSheets();
     this.registerEventHandlers();
-    this.initState();
   }
 
   render() {
@@ -60,24 +55,19 @@ export default class SynthAppParent extends React.Component {
   }
 
   renderLayers() {
-    var that = this;
-    var newUIElems = [];
+    let newUIElems = [];
 
     try {
       // Update state of all layers, as some of them might modify the state
-      this.layers.forEach(layer => {
-        layer.updateState(that.state);
-      });
-
       // Get UIElements on new state
       this.state.active_layers.forEach(layer_id => {
-        var layer = that.layers[layer_id];
-        layer.updateState(that.state);
-        var layerUiElements = layer.getUIElements();
-        newUIElems = newUIElems.concat(layerUiElements);
+        const layer = this.layers[layer_id];
+        newUIElems = newUIElems.concat(layer.getUIElements(this.state));
       });
-      this.uiElements = newUIElems;
-    } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) }
+      return this.setStateAsync({ui_elements: newUIElems});
+    } catch (err) {
+      return this.server_api.log(err.name, err.message);
+    }
   }
 
   setStateAsync(newState) {
@@ -89,15 +79,10 @@ export default class SynthAppParent extends React.Component {
     }.bind(this));
   }
 
-  setStatesync(newState) {
-    this.setState(newState);
-  }
-
   componentDidMount() {
-    var that = this;
     this.initStructure();
-
   }
+
   assureDBIsLoaded() {
     if (!this.db_is_loaded) {
       this.db_is_loaded = true;
@@ -139,31 +124,15 @@ export default class SynthAppParent extends React.Component {
   }
 
   sheetSelectionChangeHandler(event) {
-    var that = this;
-    try {
-      that.graphic_context.selection = event.address;
-      fetch(`${that.api}/log?type=context&message=${that.graphic_context.selection}`);
-    } catch (err) { fetch(`${that.api}/log?type=${err.name}&message=${err.message}`) }
-
-    if (this.state.task_suggestions_enabled) {
-      return Excel.run(function (context) {
-        return context.sync()
-          .then(function () {
-            that.currentState.selection = event.address;
-            that.loadTaskSuggestions()
-            // that.createState().then(that.getTaskSuggestions())
-            // Call state change api and get new suggested actions
-          });
-      })
-    }
+    const new_context = {...this.state.graphic_context};
+    new_context.selection = event.address;
+    this.setStateAsync({
+      graphic_context: new_context
+    }).then(() => this.loadTaskSuggestions.bind(this));
   }
 
   loading() {
 
-  }
-
-  initState() {
-    this.currentState.file = Office.context.document.url;
   }
 
   initDatabases() {
@@ -189,7 +158,7 @@ export default class SynthAppParent extends React.Component {
       }
     });
 
-    return this.setStateAsync({
+    const newState = this.augmentState({
       tables: state.tables,
       blocks: state.blocks,
       constraints: state.constraints,
@@ -198,9 +167,14 @@ export default class SynthAppParent extends React.Component {
       activities: activities,
       tasks: [],
       loading_tasks: true
-    })
+    });
+
+    return this.setStateAsync(newState)
       .then(() => this.setStateAsync({ loading: false }))
-      .then(this.loadTaskSuggestions.bind(this));
+        .then(() => {
+          this.renderLayers();
+          this.loadTaskSuggestions();
+        })
   }
 
   loadStateFromId(state_id) {
@@ -208,27 +182,19 @@ export default class SynthAppParent extends React.Component {
     return this.server_api.getState(state_id).then(this.loadState.bind(this));
   }
 
-  createState() {
-    var that = this;
-    that.currentState.tables = that.tables;
-    return fetch(`${this.api}/create_state`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(that.currentState)
-    })
-      .then(response => response.json())
-      .then(function (json) {
-        that.setStateId(json.id);
-        return json;
-      })
-      .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
+  augmentState(json_state) {
+    this.layers.forEach(layer => {
+        json_state = layer.augmentState(json_state);
+      });
+    return json_state
+  }
+
+  setActiveLayers(active_layers) {
+    this.setStateAsync({active_layers: active_layers}).then(this.renderLayers.bind(this))
   }
 
   loadTaskSuggestions() {
-    this.server_api.getTaskSuggestions(SynthAppParent.getDocumentUrl(), this.graphic_context).then((tasks) => {
+    this.server_api.getTaskSuggestions(this.state.state_id, this.state.graphic_context).then((tasks) => {
       console.log("Tasks", tasks);
       if (tasks.exception) {
         console.log(tasks.exception);
@@ -248,7 +214,7 @@ export default class SynthAppParent extends React.Component {
     const task_id = task.id;
     const activities = this.state.activities.slice();
     const self = this;
-    this.server_api.executeTask(SynthAppParent.getDocumentUrl(), task_id, this.graphic_context)
+    this.server_api.executeTask(task_id)
       .then((newState) => {
         const activity_index = activities.length;
         const callback = function () {
