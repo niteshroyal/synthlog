@@ -32,13 +32,14 @@ export default class SynthAppParent extends React.Component {
       constraints: [],
       tasks: [],
       activities: [],
-      loading_tasks: true,
+      loading_tasks: false,
       predictions: [],
       active_layers: active_layers,
       ui_elements: [],
       graphic_context: {
         selection: "",
         formats: {},
+        data_changes: {}
       }
     };
 
@@ -116,7 +117,37 @@ export default class SynthAppParent extends React.Component {
   }
 
   sheetChangeHandler(event) {
-    // this.server_api.log("Change type of event: ", event.changeType);
+    // changeType: Excel.DataChangeType | "Unknown" | "RangeEdited" | "RowInserted" | "RowDeleted" | "ColumnInserted" | "ColumnDeleted" | "CellInserted" | "CellDeleted";
+    if (event.changeType == "RangeEdited") {
+      Excel.run((context) => {
+        var modified_range = event.getRangeOrNullObject(context);
+        modified_range.load(["values", "address"]);
+
+        return context.sync().then(() => {
+          try {
+            let range_dict = this.state.graphic_context;
+            range_dict.data_changes[modified_range.address] = modified_range.values;
+
+            this.setState({ graphic_context: range_dict });
+          } catch (err) { this.server_api.log(err.name, err.message) }
+        })
+      })
+    }
+
+    if (event.changeType == "RowDeleted") {
+      // TODO: Update tables accordingly
+    }
+    if (event.changeType == "RowInserted") {
+      // TODO: Update tables accordingly
+    }
+    if (event.changeType == "ColumnDeleted") {
+      // TODO: Update tables accordingly
+    }
+    if (event.changeType == "ColumnInserted") {
+      // TODO: Update tables accordingly
+    }
+
+    this.loadTaskSuggestions();
     // this.server_api.log("Address of event: ", event.address);
     // this.server_api.log("Source of event: ", event.source);
   }
@@ -125,14 +156,14 @@ export default class SynthAppParent extends React.Component {
     try {
       Excel.run((context) => {
         var modified_range = event.getRangeOrNullObject(context);
-        modified_range.load(["format/fill/color","format/font/bold", "format/font/color", "format/font/italic","format/font/italic", "format/font/name", "format/font/size", "format/font/underline", "format/borders/*", "address"]);
-        
+        modified_range.load(["format/fill/color", "format/font/bold", "format/font/color", "format/font/italic", "format/font/italic", "format/font/name", "format/font/size", "format/font/underline", "format/borders/*", "address"]);
+
         return context.sync().then(() => {
           try {
             let range_dict = this.state.graphic_context;
             range_dict["formats"][modified_range.address] = modified_range["format"];
-            
-            this.setState({ graphic_context: range_dict });
+
+            this.setStateAsync({ graphic_context: range_dict }).then(() => this.loadTaskSuggestions());
           } catch (err) { this.server_api.log(err.name, err.message) }
         })
       })
@@ -186,7 +217,7 @@ export default class SynthAppParent extends React.Component {
       predictions: state.predictions,
       activities: activities,
       tasks: [],
-      loading_tasks: true
+      loading_tasks: false
     });
 
     return this.setStateAsync(newState)
@@ -214,19 +245,23 @@ export default class SynthAppParent extends React.Component {
   }
 
   loadTaskSuggestions() {
-    this.server_api.getTaskSuggestions(this.state.state_id, this.state.graphic_context).then((tasks) => {
-      console.log("Tasks", tasks);
-      if (tasks.exception) {
-        console.log(tasks.exception);
-      }
-      const newState = {
-        tasks: tasks.map((t) => {
-          return { id: t.id, name: t.name }
-        }),
-        loading_tasks: false
-      };
-      return this.setStateAsync(newState);
-    });
+    if (!this.state.loading_tasks) {
+      this.setStateAsync({ loading_tasks: true }).then(()=>{
+        this.server_api.getTaskSuggestions(this.state.state_id, this.state.graphic_context).then((tasks) => {
+          console.log("Tasks", tasks);
+          if (tasks.exception) {
+            console.log(tasks.exception);
+          }
+          const newState = {
+            tasks: tasks.map((t) => {
+              return { id: t.id, name: t.name }
+            }),
+            loading_tasks: false
+          };
+          return this.setStateAsync(newState);
+        })
+      });
+    }
   }
 
   executeTask(task) {
