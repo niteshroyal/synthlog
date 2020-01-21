@@ -38,6 +38,7 @@ export default class SynthAppParent extends React.Component {
       ui_elements: [],
       graphic_context: {
         selection: "",
+        formats: {},
       }
     };
 
@@ -102,8 +103,10 @@ export default class SynthAppParent extends React.Component {
     try {
       Excel.run(function (context) {
         var sheet = context.workbook.worksheets.getActiveWorksheet();
+
         sheet.onChanged.add(that.sheetChangeHandler.bind(that));
         sheet.onSelectionChanged.add(that.sheetSelectionChangeHandler.bind(that));
+        sheet.onFormatChanged.add(that.formatChangedHandler.bind(that));
         return context.sync()
           .then(function () {
             fetch(`${that.api}/log?type=ok&message=registered`)
@@ -113,14 +116,27 @@ export default class SynthAppParent extends React.Component {
   }
 
   sheetChangeHandler(event) {
-    var that = this;
-    return Excel.run(function (context) {
-      return context.sync()
-        .then(function () {
-          console.log("some event");
-          // Ideally, triggers the state update for specific events
-        });
-    })
+    // this.server_api.log("Change type of event: ", event.changeType);
+    // this.server_api.log("Address of event: ", event.address);
+    // this.server_api.log("Source of event: ", event.source);
+  }
+
+  formatChangedHandler(event) {
+    try {
+      Excel.run((context) => {
+        var modified_range = event.getRangeOrNullObject(context);
+        modified_range.load(["format/fill/color","format/font/bold", "format/font/color", "format/font/italic","format/font/italic", "format/font/name", "format/font/size", "format/font/underline", "format/borders/*", "address"]);
+        
+        return context.sync().then(() => {
+          try {
+            let range_dict = this.state.graphic_context;
+            range_dict["formats"][modified_range.address] = modified_range["format"];
+            
+            this.setState({ graphic_context: range_dict });
+          } catch (err) { this.server_api.log(err.name, err.message) }
+        })
+      })
+    } catch (err) { fetch(`${this.api}/log?type=${err.name}&message=${err.message}`) }
   }
 
   sheetSelectionChangeHandler(event) {
@@ -129,8 +145,9 @@ export default class SynthAppParent extends React.Component {
       new_context.selection = event.address;
       this.setStateAsync({
         graphic_context: new_context
-      }).then(() => { 
-        this.loadTaskSuggestions(); });
+      }).then(() => {
+        this.loadTaskSuggestions();
+      });
     } catch (err) { this.server_api.log(err.name, err.message) }
   }
 
