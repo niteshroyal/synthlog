@@ -131,7 +131,7 @@ export class PredictionLayer extends Layer {
 
     getConfidenceColor(conf) {
         // Confidence has to be normalized between 0 and 1
-        if (this.confidence_colors >= 1) {
+        if (conf >= 1) {
             return this.confidence_colors[this.confidence_colors.length - 1];
         }
         return this.confidence_colors[Math.floor(conf * this.confidence_colors.length)];
