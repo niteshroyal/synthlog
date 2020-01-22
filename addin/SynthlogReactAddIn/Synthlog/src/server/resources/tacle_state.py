@@ -1,7 +1,7 @@
 from typing import List
 
 from tacle import Constraint
-from tacle.indexing import Range
+from tacle.indexing import Range, Table
 
 from state_manager import StateConverter, State, Range as StateRange, Coordinate
 
@@ -26,10 +26,20 @@ class ConstraintConverter(StateConverter):
 
     def add_to_json(self, state: State, json_dict: dict) -> dict:
         constraints = []
+
+        tables_dict = {}
+        for table in state.tables:
+            if "tacle_table" in table:
+                tacle_table = table["tacle_table"]  # type: Table
+                tables_dict[tacle_table.name] = tacle_table
+
         for constraint in ConstraintConverter.get_constraints(state):
             constraint_args = dict()
             for arg_name, arg_value in constraint.assignment.items():
-                tacle_range = Range.from_legacy_bounds(arg_value.bounds)
+                table = tables_dict[arg_value.table.name]
+                tacle_range = table.range.relative_to_absolute(
+                    Range.from_legacy_bounds(arg_value.bounds)
+                )
                 constraint_args[arg_name] = tacle_range_to_state_range(tacle_range)
 
             constraints.append(

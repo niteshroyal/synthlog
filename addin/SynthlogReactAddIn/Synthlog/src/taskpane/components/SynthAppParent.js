@@ -246,26 +246,6 @@ export default class SynthAppParent extends React.Component {
     );
   }
 
-  getTaskSuggestions() {
-    var that = this;
-    var parameters = { state: that.state.state_id };
-    //var parameters = {state: "latest"};
-    return fetch(`${this.api}/get_tasks`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(parameters)
-    })
-      .then(response => response.json())
-      .then(function (json) {
-        that.setState({ tasks_suggestions: json.tasks });
-        return json;
-      })
-      .catch(err => fetch(`${that.api}/log?type=${err.name}&message=${err.message}`))
-  }
-
   performTask(task_id) {
     var that = this;
     var parameters = { state: that.state.state_id, task_id: task_id };

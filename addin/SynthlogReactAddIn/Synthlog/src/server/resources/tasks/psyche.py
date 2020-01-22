@@ -86,9 +86,7 @@ class PsycheTask(BaseTask):
     def do(self) -> State:
         # logging.basicConfig(level=logging.DEBUG)
         spreadsheet = Spreadsheet(None)
-        spreadsheet.tables = [
-            t["tacle_table"] for t in self.state.tables if "tacle_table" in t
-        ]
+        spreadsheet.tables = self.tables
         context = PsycheContext(
             spreadsheet,
             ConstraintConverter.get_constraints(self.state),

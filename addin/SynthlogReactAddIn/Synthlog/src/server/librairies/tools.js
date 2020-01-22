@@ -24,7 +24,7 @@ exports.runScriptDefault = function(script_name, args, res) {
             res.send({ error: err });
         }
         else {
-            console.log("Initial state:", results[0]);
+            // console.log("Initial state:", results[0]);
             res.setHeader('Content-Type', 'application/json');
             res.send(results[0]);
         }
