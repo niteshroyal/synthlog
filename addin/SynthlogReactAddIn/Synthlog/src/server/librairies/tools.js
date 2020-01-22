@@ -9,7 +9,7 @@ exports.getDefaultOptions = function(args) {
     return {
         mode: 'text',
         scriptPath: builtin_path,
-        pythonOptions: ['-u'],
+        pythonOptions: ['-u', "-W ignore"],
         args: args,
         pythonPath: process.env.PYTHON_PATH,
     };
