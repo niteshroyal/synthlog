@@ -1,6 +1,103 @@
 from .task import BaseTask
-import pandas as pd
 from pyswip import Prolog, Variable
+
+# StateConverter imports
+import pandas as pd
+import csv
+import os
+import openpyxl
+
+
+# TODO: find a better place for this file (share it with prediction and MERCS?)
+class StateConverter:
+    def __init__(self, state, context):
+        self.state = state
+        self.context = context
+        self.__table_ranges = {}
+
+    def to_dataframes(self):
+        xlsx = self.__create_xlsx()
+        wb = openpyxl.load_workbook(xlsx)
+        tables = {}
+        x = 0
+        for table in self.state.tables:
+            tables["t" + str(x)] = StateConverter.__extract_data(
+                wb, table.range.range_address
+            )
+            self.__table_ranges["t" + str(x)] = openpyxl.worksheet.cell_range.CellRange(
+                table.range.range_address
+            )
+            x += 1
+        return tables
+
+    def to_colors(self):
+        """
+        Has to be run after to_dataframes (else no tables are "existing")
+        :return:
+        """
+        colors = {}
+        for range_string in self.context["formats"]:
+            range = openpyxl.worksheet.cell_range.CellRange(range_string)
+            color = self.context["formats"][range_string].fill
+            for table in self.__table_ranges:
+                try:
+                    intersection = self.__table_ranges[table].intersection(range)
+                    if color not in colors:
+                        colors[color] = {}
+                    if table not in colors[color]:
+                        colors[color][table] = (set(), set())
+                    for i in range(intersection.min_row, intersection.max_row + 1):
+                        colors[color][table][0].add(i)
+                    for i in range(intersection.min_col, intersection.max_col + 1):
+                        colors[color][table][1].add(i)
+                except ValueError:
+                    pass
+        return colors
+
+    def __create_xlsx(self, xlsx_filename=None):
+        csv_filename = self.state.filepath
+        wb = openpyxl.Workbook()
+        ws = wb.active
+
+        with open(csv_filename) as f:
+            reader = csv.reader(f, delimiter=",")
+            for row in reader:
+                ws.append(row)
+
+        if xlsx_filename is None:
+            base, _ = os.path.splitext(csv_filename)
+            xlsx_filename = "{}.{}".format(base, "xlsx")
+
+        wb.save(xlsx_filename)
+        return xlsx_filename
+
+    @staticmethod
+    def __extract_data(wb, xl_range):
+        ws = wb.active
+        ws_range = ws[xl_range]
+        data = StateConverter.__parse_worksheet_range(ws_range)
+        # TODO: add headers
+        df = pd.DataFrame(data)
+        return StateConverter.__convert_columns(df)
+
+    @staticmethod
+    def __convert_columns(df):
+        types_to_try = [int, float, "category"]
+        for col in df.columns:
+            for t in types_to_try:
+                try:
+                    df[col] = df[col].astype(t, copy=False)
+                    break
+                except:
+                    pass
+        return df
+
+    @staticmethod
+    def __parse_worksheet_range(ws_range):
+        data = []
+        for row in ws_range:
+            data.append([cell.value for cell in row])
+        return data
 
 
 class ValueSet:
@@ -47,8 +144,8 @@ class BaseSelectionTask(BaseTask):
 
     def __init__(self, state, context: dict):
         super().__init__(state, context)
-        self.tables, self.relevant, self.irrelevant = self.extract_parameters_from_state(
-            state
+        self.tables, self.relevant, self.irrelevant = (
+            self.extract_parameters_from_state()
         )
         self.__irrelevant_tryout = 0
         self.values = ValueSet()
@@ -107,11 +204,11 @@ class BaseSelectionTask(BaseTask):
         tuples = {}
         templates = {}
         for label in self.tables:
-            columns = [False for _ in range(self.tables[label].shape[1])]
-            rows = [False for _ in range(self.tables[label].shape[0])]
-            for cell in color[label]:
-                rows[cell[0]] = True
-                columns[cell[1]] = True
+            rows = []
+            columns = []
+            if label in color:
+                rows = sorted(list(color[label][0]))
+                columns = sorted(list(color[label][1]))
             tuples[label] = self.tables[label].iloc[rows, columns]
             templates[label] = columns
         return tuples, templates
@@ -126,7 +223,7 @@ class BaseSelectionTask(BaseTask):
         res, _ = self.rec_golem(prolog, examples, irrelevants, [], 0)
         return res
 
-    def extract_parameters_from_state(self, state):
+    def extract_parameters_from_state(self):
         # TODO: get tables, relevant colors and irrelevant colors
         # Example:
         # tables = {"sales":
@@ -157,7 +254,12 @@ class BaseSelectionTask(BaseTask):
         #             "providers": [(0, 0), (0, 1), (0, 3), (0, 4), (1, 0), (1, 3), (3, 0)]}
         # irrelevant = {"sales": [], "providers": [(5, 4), (7, 4)]}
 
-        return {}, {}, {}
+        converter = StateConverter(self.state, self.context)
+        dfs = converter.to_dataframes()
+        colors = converter.to_colors()
+        relevant = colors[list(colors.keys())[0]]
+        irrelevant = colors[list(colors.keys())[1]]
+        return dfs, relevant, irrelevant
 
     def prolog_str(self, string, store=False):
         if store:
@@ -256,8 +358,8 @@ class BaseSelectionTask(BaseTask):
     def build_model(examples):
         # TODO: test filepath
         pl = Prolog()
-        pl.consult("Prolog/subtle-2.2.pl")
-        pl.consult("Prolog/glgg.pl")
+        pl.consult("./src/server/resources/tasks/prolog/subtle-2.2.pl")
+        pl.consult("./src/server/resources/tasks/prolog/glgg.pl")
         for example in examples:
             pl.assertz(example[:-1])
         return pl
