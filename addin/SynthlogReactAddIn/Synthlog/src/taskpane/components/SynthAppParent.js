@@ -32,12 +32,14 @@ export default class SynthAppParent extends React.Component {
       constraints: [],
       tasks: [],
       activities: [],
-      loading_tasks: true,
+      loading_tasks: false,
       predictions: [],
       active_layers: active_layers,
       ui_elements: [],
       graphic_context: {
         selection: "",
+        formats: {},
+        data_changes: {}
       }
     };
 
@@ -102,8 +104,10 @@ export default class SynthAppParent extends React.Component {
     try {
       Excel.run(function (context) {
         var sheet = context.workbook.worksheets.getActiveWorksheet();
+
         sheet.onChanged.add(that.sheetChangeHandler.bind(that));
         sheet.onSelectionChanged.add(that.sheetSelectionChangeHandler.bind(that));
+        sheet.onFormatChanged.add(that.formatChangedHandler.bind(that));
         return context.sync()
           .then(function () {
             fetch(`${that.api}/log?type=ok&message=registered`)
@@ -113,14 +117,57 @@ export default class SynthAppParent extends React.Component {
   }
 
   sheetChangeHandler(event) {
-    var that = this;
-    return Excel.run(function (context) {
-      return context.sync()
-        .then(function () {
-          console.log("some event");
-          // Ideally, triggers the state update for specific events
-        });
-    })
+    // changeType: Excel.DataChangeType | "Unknown" | "RangeEdited" | "RowInserted" | "RowDeleted" | "ColumnInserted" | "ColumnDeleted" | "CellInserted" | "CellDeleted";
+    if (event.changeType == "RangeEdited") {
+      Excel.run((context) => {
+        var modified_range = event.getRangeOrNullObject(context);
+        modified_range.load(["values", "address"]);
+
+        return context.sync().then(() => {
+          try {
+            let range_dict = this.state.graphic_context;
+            range_dict.data_changes[modified_range.address] = modified_range.values;
+
+            this.setState({ graphic_context: range_dict });
+          } catch (err) { this.server_api.log(err.name, err.message) }
+        })
+      })
+    }
+
+    if (event.changeType == "RowDeleted") {
+      // TODO: Update tables accordingly
+    }
+    if (event.changeType == "RowInserted") {
+      // TODO: Update tables accordingly
+    }
+    if (event.changeType == "ColumnDeleted") {
+      // TODO: Update tables accordingly
+    }
+    if (event.changeType == "ColumnInserted") {
+      // TODO: Update tables accordingly
+    }
+
+    this.loadTaskSuggestions();
+    // this.server_api.log("Address of event: ", event.address);
+    // this.server_api.log("Source of event: ", event.source);
+  }
+
+  formatChangedHandler(event) {
+    try {
+      Excel.run((context) => {
+        var modified_range = event.getRangeOrNullObject(context);
+        modified_range.load(["format/fill/color", "format/font/bold", "format/font/color", "format/font/italic", "format/font/italic", "format/font/name", "format/font/size", "format/font/underline", "format/borders/*", "address"]);
+
+        return context.sync().then(() => {
+          try {
+            let range_dict = this.state.graphic_context;
+            range_dict["formats"][modified_range.address] = modified_range["format"];
+
+            this.setStateAsync({ graphic_context: range_dict }).then(() => this.loadTaskSuggestions());
+          } catch (err) { this.server_api.log(err.name, err.message) }
+        })
+      })
+    } catch (err) { fetch(`${this.api}/log?type=${err.name}&message=${err.message}`) }
   }
 
   sheetSelectionChangeHandler(event) {
@@ -129,8 +176,9 @@ export default class SynthAppParent extends React.Component {
       new_context.selection = event.address;
       this.setStateAsync({
         graphic_context: new_context
-      }).then(() => { 
-        this.loadTaskSuggestions(); });
+      }).then(() => {
+        this.loadTaskSuggestions();
+      });
     } catch (err) { this.server_api.log(err.name, err.message) }
   }
 
@@ -169,7 +217,7 @@ export default class SynthAppParent extends React.Component {
       predictions: state.predictions,
       activities: activities,
       tasks: [],
-      loading_tasks: true
+      loading_tasks: false
     });
 
     return this.setStateAsync(newState)
@@ -197,19 +245,23 @@ export default class SynthAppParent extends React.Component {
   }
 
   loadTaskSuggestions() {
-    this.server_api.getTaskSuggestions(this.state.state_id, this.state.graphic_context).then((tasks) => {
-      console.log("Tasks", tasks);
-      if (tasks.exception) {
-        console.log(tasks.exception);
-      }
-      const newState = {
-        tasks: tasks.map((t) => {
-          return { id: t.id, name: t.name }
-        }),
-        loading_tasks: false
-      };
-      return this.setStateAsync(newState);
-    });
+    if (!this.state.loading_tasks) {
+      this.setStateAsync({ loading_tasks: true }).then(()=>{
+        this.server_api.getTaskSuggestions(this.state.state_id, this.state.graphic_context).then((tasks) => {
+          console.log("Tasks", tasks);
+          if (tasks.exception) {
+            console.log(tasks.exception);
+          }
+          const newState = {
+            tasks: tasks.map((t) => {
+              return { id: t.id, name: t.name }
+            }),
+            loading_tasks: false
+          };
+          return this.setStateAsync(newState);
+        })
+      });
+    }
   }
 
   executeTask(task) {
