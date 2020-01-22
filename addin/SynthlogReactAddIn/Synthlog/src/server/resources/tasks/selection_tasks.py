@@ -37,21 +37,24 @@ class StateConverter:
         """
         colors = {}
         for range_string in self.context["formats"]:
-            range = openpyxl.worksheet.cell_range.CellRange(range_string)
-            color = self.context["formats"][range_string].fill
-            for table in self.__table_ranges:
-                try:
-                    intersection = self.__table_ranges[table].intersection(range)
-                    if color not in colors:
-                        colors[color] = {}
-                    if table not in colors[color]:
-                        colors[color][table] = (set(), set())
-                    for i in range(intersection.min_row, intersection.max_row + 1):
-                        colors[color][table][0].add(i)
-                    for i in range(intersection.min_col, intersection.max_col + 1):
-                        colors[color][table][1].add(i)
-                except ValueError:
-                    pass
+            range_excel = openpyxl.worksheet.cell_range.CellRange(range_string.split("!")[1]) # TODO: Cleaner split
+            color = self.context["formats"][range_string]["fill"]["color"]
+            if color != "#FFFFFF":
+                for table in self.__table_ranges:
+                    try:
+                        intersection = self.__table_ranges[table].intersection(range_excel)
+                        print(intersection)
+                        if color not in colors:
+                            colors[color] = {}
+                        if table not in colors[color]:
+                            colors[color][table] = (set(), set())
+                        for i in range(intersection.min_row-self.__table_ranges[table].min_row, intersection.max_row-self.__table_ranges[table].min_row + 1):
+                            colors[color][table][0].add(i)
+                        for i in range(intersection.min_col-self.__table_ranges[table].min_col, intersection.max_col-self.__table_ranges[table].min_col + 1):
+                            colors[color][table][1].add(i)
+                    except ValueError:
+                        pass
+        print(colors)
         return colors
 
     def __create_xlsx(self, xlsx_filename=None):
@@ -74,10 +77,18 @@ class StateConverter:
     @staticmethod
     def __extract_data(wb, xl_range):
         ws = wb.active
+
+        range_obj = openpyxl.worksheet.cell_range.CellRange(xl_range)
+        range_obj.shift(row_shift=-1)
+        header = []
+        for row in ws[range_obj.coord]:
+            header = [cell.value for cell in row]
+            break
+        
         ws_range = ws[xl_range]
         data = StateConverter.__parse_worksheet_range(ws_range)
         # TODO: add headers
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data, columns=header)
         return StateConverter.__convert_columns(df)
 
     @staticmethod
@@ -124,6 +135,11 @@ class ValueSet:
 
 class BaseSelectionTask(BaseTask):
     def do(self):
+        self.__irrelevant_tryout = 0
+        self.values = ValueSet()
+        self.tables, self.relevant, self.irrelevant = (
+            self.extract_parameters_from_state()
+        )
         tuples, templates = self.build_tuples(self.relevant)
         irrelevant_tuples, _ = self.build_tuples(self.irrelevant)
         examples = self.build_examples(tuples, irrelevant_tuples)
@@ -139,16 +155,14 @@ class BaseSelectionTask(BaseTask):
         for res in model.query("relevant(X, Y)"):
             print(res)
 
+        obj_list = []
+        return self.state.add_objects(obj_list)
+
     def description(self) -> str:
         pass
 
     def __init__(self, state, context: dict):
         super().__init__(state, context)
-        self.tables, self.relevant, self.irrelevant = (
-            self.extract_parameters_from_state()
-        )
-        self.__irrelevant_tryout = 0
-        self.values = ValueSet()
 
     #######################
     #                     #
@@ -158,7 +172,7 @@ class BaseSelectionTask(BaseTask):
 
     def assertz_prolog_tuples(self, prolog, templates):
         for key in self.tables:
-            for i, row in self.tables[key].loc[:, templates[key]].iterrows():
+            for i, row in self.tables[key].iloc[:, templates[key]].iterrows():
                 irow = [i] + list(row)
                 prolog.assertz(self.build_prolog_tuple(key, irow))
 
