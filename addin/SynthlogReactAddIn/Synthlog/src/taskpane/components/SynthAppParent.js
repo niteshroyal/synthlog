@@ -120,6 +120,9 @@ export default class SynthAppParent extends React.Component {
     // changeType: Excel.DataChangeType | "Unknown" | "RangeEdited" | "RowInserted" | "RowDeleted" | "ColumnInserted" | "ColumnDeleted" | "CellInserted" | "CellDeleted";
     if (event.changeType == "RangeEdited") {
       Excel.run((context) => {
+        try {
+          context.workbook.save(Excel.SaveBehavior.Save); // available soon
+        } catch (err) { this.server_api.log(err.name, err.message) }
         var modified_range = event.getRangeOrNullObject(context);
         modified_range.load(["values", "address"]);
 
@@ -246,7 +249,7 @@ export default class SynthAppParent extends React.Component {
 
   loadTaskSuggestions() {
     if (!this.state.loading_tasks) {
-      this.setStateAsync({ loading_tasks: true }).then(()=>{
+      this.setStateAsync({ loading_tasks: true }).then(() => {
         this.server_api.getTaskSuggestions(this.state.state_id, this.state.graphic_context).then((tasks) => {
           console.log("Tasks", tasks);
           if (tasks.exception) {

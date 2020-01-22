@@ -17,6 +17,11 @@ try:
 except ImportError:
     psyche = None
 
+try:
+    from tasks import MERCSTask
+except ImportError:
+    MERCSTask = None
+
 
 class TaskManager:
     def __init__(self):
@@ -57,6 +62,9 @@ class TaskManager:
 
         if psyche is not None:
             task_pool.append(psyche.PsycheTask(state, context))
+
+        if MERCSTask is not None:
+            task_pool.append(MERCSTask.MERCSTask(state, context))
 
         task_pool.append(ResetTask.ResetTask(state, context))
         # TODO Add MERCS back
