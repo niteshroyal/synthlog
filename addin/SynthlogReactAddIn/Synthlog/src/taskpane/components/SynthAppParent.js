@@ -1,7 +1,7 @@
 import * as React from 'react';
 import 'isomorphic-fetch';
 import ServerAPI from "./api";
-import { BlockLayer, PredictionLayer, TableLayer } from "./Layers";
+import { BlockLayer, PredictionLayer, TableLayer, SelectionLayer } from "./Layers";
 
 const uuidv4 = require('uuid/v4');
 
@@ -17,7 +17,7 @@ export default class SynthAppParent extends React.Component {
 
     this.db_is_loaded = false;
 
-    this.layers = [new BlockLayer(), new TableLayer(), new PredictionLayer()];
+    this.layers = [new BlockLayer(), new TableLayer(), new PredictionLayer(), new SelectionLayer()];
     var active_layers = this.layers.map(function (val, index) { return index });
 
     this.state = {
@@ -218,6 +218,7 @@ export default class SynthAppParent extends React.Component {
       constraints: state.constraints,
       state_id: state.id,
       predictions: state.predictions,
+      selections: state.selections,
       activities: activities,
       tasks: [],
       loading_tasks: false

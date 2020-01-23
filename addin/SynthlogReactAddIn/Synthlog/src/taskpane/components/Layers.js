@@ -106,7 +106,7 @@ export class BlockTableLayer extends Layer {
         const table_elements = this.table_layer.getUIElements();
 
         // We want to first display the elements of blocks and then tables, to keep thick table borders
-        return  this.block_layer.getUIElements().concat(table_elements);
+        return this.block_layer.getUIElements().concat(table_elements);
     }
 }
 
@@ -135,5 +135,22 @@ export class PredictionLayer extends Layer {
             return this.confidence_colors[this.confidence_colors.length - 1];
         }
         return this.confidence_colors[Math.floor(conf * this.confidence_colors.length)];
+    }
+}
+
+export class SelectionLayer extends Layer {
+    constructor() {
+        super("Selection Layer");
+    }
+
+    getUIElements(state) {
+        return state.selections.map((sel) => {
+            const fill_format = new UIElements.FillFormatting(sel.cell.formatting.fill.color);
+
+            const format = new UIElements.ObjectFormatting(fill_format, null, null);
+            // noinspection JSUnresolvedVariable
+            return new UIElements.Cell(sel.cell.cell_address, null, format);
+
+        });
     }
 }

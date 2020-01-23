@@ -8,23 +8,13 @@ import csv
 import os
 import openpyxl
 
-from ..state_manager import (
+from state_manager import (
     ObjectFormatting,
     FillFormatting,
     MetadataPropObject,
     Cell,
-    jsonify,
+    Selection,
 )
-
-
-class Selection(MetadataPropObject):
-    def __init__(self, cell, provenance, metadata=None):
-        super().__init__(metadata)
-        self.cell = cell
-        self.provenance = provenance
-
-    def jsonify(self):
-        return {"cell": jsonify(self.cell), "provenance": self.provenance}
 
 
 # TODO: find a better place for this file (share it with prediction and MERCS?)
@@ -39,9 +29,8 @@ class StateParser:
         ws = self.workbook.active
         selected_cells = []
         for table in self.table_ranges:
-            range_obj = openpyxl.worksheet.cell_range.CellRange(
-                self.table_ranges[table]
-            )
+            range_obj = self.table_ranges[table]
+
             x = 0
             for row in ws[range_obj.coord]:
                 if x in selection[table]:
@@ -64,8 +53,10 @@ class StateParser:
             elif template[i] == x:
                 res.append(
                     Cell(
-                        cell_address=cell.cordinate,
-                        formatting=ObjectFormatting(fill=FillFormatting(color=color)),
+                        cell_address=str(cell.coordinate),
+                        value=None,
+                        formatting=ObjectFormatting(fill=FillFormatting(color=color), font=None, borders=None),
+                        metadata=[],
                     )
                 )
             x += 1
@@ -103,7 +94,6 @@ class StateParser:
                         intersection = self.table_ranges[table].intersection(
                             range_excel
                         )
-                        print(intersection)
                         if color not in colors:
                             colors[color] = {}
                         if table not in colors[color]:
@@ -224,9 +214,13 @@ class BaseSelectionTask(BaseTask):
         self.__irrelevant_tryout = 0
         self.values = ValueSet()
         self.converter = StateParser(self.state, self.context)
-        self.tables, self.relevant, self.irrelevant, self.relevant_color, self.irrelevant_color = (
-            self.extract_parameters_from_state()
-        )
+        (
+            self.tables,
+            self.relevant,
+            self.irrelevant,
+            self.relevant_color,
+            self.irrelevant_color,
+        ) = self.extract_parameters_from_state()
 
     def __init__(self, state, context: dict):
         super().__init__(state, context)
