@@ -1,5 +1,6 @@
 from .task import BaseTask
 from pyswip import Prolog, Variable
+from uuid import uuid4
 
 # StateConverter imports
 import pandas as pd
@@ -7,24 +8,79 @@ import csv
 import os
 import openpyxl
 
+from ..state_manager import (
+    ObjectFormatting,
+    FillFormatting,
+    MetadataPropObject,
+    Cell,
+    jsonify,
+)
+
+
+class Selection(MetadataPropObject):
+    def __init__(self, cell, provenance, metadata=None):
+        super().__init__(metadata)
+        self.cell = cell
+        self.provenance = provenance
+
+    def jsonify(self):
+        return {"cell": jsonify(self.cell), "provenance": self.provenance}
+
 
 # TODO: find a better place for this file (share it with prediction and MERCS?)
-class StateConverter:
+class StateParser:
     def __init__(self, state, context):
         self.state = state
         self.context = context
-        self.__table_ranges = {}
+        self.workbook = None
+        self.table_ranges = {}
+
+    def get_cells(self, selection, color, template):
+        ws = self.workbook.active
+        selected_cells = []
+        for table in self.table_ranges:
+            range_obj = openpyxl.worksheet.cell_range.CellRange(
+                self.table_ranges[table]
+            )
+            x = 0
+            for row in ws[range_obj.coord]:
+                if x in selection[table]:
+                    selected_cells += self.get_template_cells(
+                        row, color, template[table]
+                    )
+                x += 1
+        return selected_cells
+
+    @staticmethod
+    def get_template_cells(row, color, template):
+        x = 0
+        i = 0
+        res = []
+        for cell in row:
+            while template[i] < x and i + 1 < len(template):
+                i += 1
+            if template[i] < x and i + 1 == len(template):
+                break
+            elif template[i] == x:
+                res.append(
+                    Cell(
+                        cell_address=cell.cordinate,
+                        formatting=ObjectFormatting(fill=FillFormatting(color=color)),
+                    )
+                )
+            x += 1
+        return res
 
     def to_dataframes(self):
         xlsx = self.__create_xlsx()
-        wb = openpyxl.load_workbook(xlsx)
+        self.workbook = openpyxl.load_workbook(xlsx)
         tables = {}
         x = 0
         for table in self.state.tables:
-            tables["t" + str(x)] = StateConverter.__extract_data(
-                wb, table.range.range_address
+            tables["t" + str(x)] = StateParser.__extract_data(
+                self.workbook, table.range.range_address
             )
-            self.__table_ranges["t" + str(x)] = openpyxl.worksheet.cell_range.CellRange(
+            self.table_ranges["t" + str(x)] = openpyxl.worksheet.cell_range.CellRange(
                 table.range.range_address
             )
             x += 1
@@ -37,24 +93,33 @@ class StateConverter:
         """
         colors = {}
         for range_string in self.context["formats"]:
-            range_excel = openpyxl.worksheet.cell_range.CellRange(range_string.split("!")[1]) # TODO: Cleaner split
+            range_excel = openpyxl.worksheet.cell_range.CellRange(
+                range_string.split("!")[1]
+            )  # TODO: Cleaner split
             color = self.context["formats"][range_string]["fill"]["color"]
             if color != "#FFFFFF":
-                for table in self.__table_ranges:
+                for table in self.table_ranges:
                     try:
-                        intersection = self.__table_ranges[table].intersection(range_excel)
+                        intersection = self.table_ranges[table].intersection(
+                            range_excel
+                        )
                         print(intersection)
                         if color not in colors:
                             colors[color] = {}
                         if table not in colors[color]:
                             colors[color][table] = (set(), set())
-                        for i in range(intersection.min_row-self.__table_ranges[table].min_row, intersection.max_row-self.__table_ranges[table].min_row + 1):
+                        for i in range(
+                            intersection.min_row - self.table_ranges[table].min_row,
+                            intersection.max_row - self.table_ranges[table].min_row + 1,
+                        ):
                             colors[color][table][0].add(i)
-                        for i in range(intersection.min_col-self.__table_ranges[table].min_col, intersection.max_col-self.__table_ranges[table].min_col + 1):
+                        for i in range(
+                            intersection.min_col - self.table_ranges[table].min_col,
+                            intersection.max_col - self.table_ranges[table].min_col + 1,
+                        ):
                             colors[color][table][1].add(i)
                     except ValueError:
                         pass
-        print(colors)
         return colors
 
     def __create_xlsx(self, xlsx_filename=None):
@@ -84,12 +149,12 @@ class StateConverter:
         for row in ws[range_obj.coord]:
             header = [cell.value for cell in row]
             break
-        
+
         ws_range = ws[xl_range]
-        data = StateConverter.__parse_worksheet_range(ws_range)
+        data = StateParser.__parse_worksheet_range(ws_range)
         # TODO: add headers
         df = pd.DataFrame(data, columns=header)
-        return StateConverter.__convert_columns(df)
+        return StateParser.__convert_columns(df)
 
     @staticmethod
     def __convert_columns(df):
@@ -135,34 +200,41 @@ class ValueSet:
 
 class BaseSelectionTask(BaseTask):
     def do(self):
-        self.__irrelevant_tryout = 0
-        self.values = ValueSet()
-        self.tables, self.relevant, self.irrelevant = (
-            self.extract_parameters_from_state()
-        )
-        tuples, templates = self.build_tuples(self.relevant)
-        irrelevant_tuples, _ = self.build_tuples(self.irrelevant)
-        examples = self.build_examples(tuples, irrelevant_tuples)
-        prolog_examples = self.build_prolog_examples(examples)
-        model = self.build_model(prolog_examples)
-        self.assertz_prolog_tuples(model, templates)
-        relevant_rules = self.lggs_to_rules(
-            self.golem(model, prolog_examples, irrelevant_tuples)
-        )
-        self.assertz_rules(model, relevant_rules)
+        self.init()
+        prolog_examples, templates, irrelevant_tuples = self.build_data()
+        model = self.build_prolog_model(prolog_examples, templates, irrelevant_tuples)
 
-        # TODO: output the colors
+        table_colors = {}
         for res in model.query("relevant(X, Y)"):
-            print(res)
+            if res["X"] not in table_colors:
+                table_colors[res["X"]] = set()
+            table_colors[res["X"]].add(res["Y"])
 
-        obj_list = []
-        return self.state.add_objects(obj_list)
+        cells = self.converter.get_cells(table_colors, self.relevant_color, templates)
+        selections = [
+            Selection(cell=c, provenance=("LGG_selection", str(uuid4()))) for c in cells
+        ]
+
+        return self.state.add_objects(selections)
 
     def description(self) -> str:
-        pass
+        return "LGG Selection"
+
+    def init(self):
+        self.__irrelevant_tryout = 0
+        self.values = ValueSet()
+        self.converter = StateParser(self.state, self.context)
+        self.tables, self.relevant, self.irrelevant, self.relevant_color, self.irrelevant_color = (
+            self.extract_parameters_from_state()
+        )
 
     def __init__(self, state, context: dict):
         super().__init__(state, context)
+        self.__irrelevant_tryout = 0
+        self.values = None
+        self.tables = None
+        self.relevant = None
+        self.irrelevant = None
 
     #######################
     #                     #
@@ -175,6 +247,22 @@ class BaseSelectionTask(BaseTask):
             for i, row in self.tables[key].iloc[:, templates[key]].iterrows():
                 irow = [i] + list(row)
                 prolog.assertz(self.build_prolog_tuple(key, irow))
+
+    def build_data(self):
+        tuples, templates = self.build_tuples(self.relevant)
+        irrelevant_tuples, _ = self.build_tuples(self.irrelevant)
+        examples = self.build_examples(tuples, irrelevant_tuples)
+        prolog_examples = self.build_prolog_examples(examples)
+        return prolog_examples, templates, irrelevant_tuples
+
+    def build_prolog_model(self, prolog_examples, templates, irrelevant_tuples):
+        model = self.build_model(prolog_examples)
+        self.assertz_prolog_tuples(model, templates)
+        relevant_rules = self.lggs_to_rules(
+            self.golem(model, prolog_examples, irrelevant_tuples)
+        )
+        self.assertz_rules(model, relevant_rules)
+        return model
 
     def build_examples(self, tuples, irrelevant):
         examples = []
@@ -238,42 +326,13 @@ class BaseSelectionTask(BaseTask):
         return res
 
     def extract_parameters_from_state(self):
-        # TODO: get tables, relevant colors and irrelevant colors
-        # Example:
-        # tables = {"sales":
-        #     pd.DataFrame([
-        #         ["Vanilla", "Florence", 610, 190, 670, 1470, "YES"],
-        #         ["Banana", "Stockholm", 170, 690, 520, 1380, "YES"],
-        #         ["Chocolate", "Copenhagen", 560, 320, 140, 1020, "YES"],
-        #         ["Banana", "Berlin", 610, 640, 320, 1570, "NO"],
-        #         ["Stracciatella", "Florence", 300, 270, 290, 860, "NO"],
-        #         ["Chocolate", "Milan", 430, 350, "?", "?", "?"],
-        #         ["Banana", "Aachen", 250, 650, "?", "?", "?"],
-        #         ["Chocolate", "Brussels", 210, 280, "?", "?", "?"]
-        #     ],
-        #         columns=["Type", "City", "June", "July", "Aug", "Total", "Profit"]),
-        #     "providers":
-        #         pd.DataFrame([
-        #             ["Vanilla", "Florence", 1, "Cheap", "Bad"],
-        #             ["Vanilla", "Florence", 2, "Regular", "Good"],
-        #             ["Stracciatella", "Florence", 1, "Regular", "Great"],
-        #             ["Chocolate", "Copenhagen", 3, "Cheap", "Good"],
-        #             ["Chocolate", "Milan", 4, "Regular", "Good"],
-        #             ["Chocolate", "Milan", 5, "Expensive", "Great"],
-        #             ["Chocolate", "Brussels", 6, "Regular", "Good"],
-        #             ["Chocolate", "Brussels", 6, "Expensive", "Good"]
-        #         ],
-        #             columns=["Type", "City", "ProviderID", "Price", "Quality"])}
-        # relevant = {"sales": [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 6), (2, 0), (5, 0), (5, 1), (7, 0), (7, 1)],
-        #             "providers": [(0, 0), (0, 1), (0, 3), (0, 4), (1, 0), (1, 3), (3, 0)]}
-        # irrelevant = {"sales": [], "providers": [(5, 4), (7, 4)]}
-
-        converter = StateConverter(self.state, self.context)
-        dfs = converter.to_dataframes()
-        colors = converter.to_colors()
-        relevant = colors[list(colors.keys())[0]]
-        irrelevant = colors[list(colors.keys())[1]]
-        return dfs, relevant, irrelevant
+        dfs = self.converter.to_dataframes()
+        colors = self.converter.to_colors()
+        relevant_color = list(colors.keys())[0]
+        irrelevant_color = list(colors.keys())[1]
+        relevant = colors[relevant_color]
+        irrelevant = colors[irrelevant_color]
+        return dfs, relevant, irrelevant, relevant_color, irrelevant_color
 
     def prolog_str(self, string, store=False):
         if store:
