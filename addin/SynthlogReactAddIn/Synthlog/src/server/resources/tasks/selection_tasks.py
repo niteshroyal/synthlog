@@ -1,4 +1,18 @@
-from .task import BaseTask
+if not __name__ == "__main__":
+    from .task import BaseTask
+    from state_manager import (
+        ObjectFormatting,
+        FillFormatting,
+        MetadataPropObject,
+        Cell,
+        Selection,
+    )
+else:
+
+    class BaseTask:
+        pass
+
+
 from pyswip import Prolog, Variable
 from uuid import uuid4
 
@@ -7,14 +21,6 @@ import pandas as pd
 import csv
 import os
 import openpyxl
-
-from state_manager import (
-    ObjectFormatting,
-    FillFormatting,
-    MetadataPropObject,
-    Cell,
-    Selection,
-)
 
 
 # TODO: find a better place for this file (share it with prediction and MERCS?)
@@ -55,7 +61,9 @@ class StateParser:
                     Cell(
                         cell_address=str(cell.coordinate),
                         value=None,
-                        formatting=ObjectFormatting(fill=FillFormatting(color=color), font=None, borders=None),
+                        formatting=ObjectFormatting(
+                            fill=FillFormatting(color=color), font=None, borders=None
+                        ),
                         metadata=[],
                     )
                 )
@@ -191,18 +199,15 @@ class ValueSet:
 class BaseSelectionTask(BaseTask):
     def do(self):
         self.init()
-        prolog_examples, templates, irrelevant_tuples = self.build_data()
-        model = self.build_prolog_model(prolog_examples, templates, irrelevant_tuples)
-
-        table_colors = {}
-        for res in model.query("relevant(X, Y)"):
-            if res["X"] not in table_colors:
-                table_colors[res["X"]] = set()
-            table_colors[res["X"]].add(res["Y"])
-
+        table_colors, templates = self.run()
         cells = self.converter.get_cells(table_colors, self.relevant_color, templates)
+        cells += self.converter.get_cells(
+            {table: self.irrelevant[0] for table in self.irrelevant},
+            self.irrelevant_color,
+            templates,
+        )
         selections = [
-            Selection(cell=c, provenance=("LGG_selection", str(uuid4()))) for c in cells
+            Selection(cell=c, provenance=(self.provenance, str(uuid4()))) for c in cells
         ]
 
         return self.state.add_objects(selections)
@@ -210,8 +215,35 @@ class BaseSelectionTask(BaseTask):
     def description(self) -> str:
         return "LGG Selection"
 
+    def is_available(self) -> bool:
+        colors = set()
+        for range_string in self.context["formats"]:
+            color = self.context["formats"][range_string]["fill"]["color"]
+            if color != "#FFFFFF":
+                colors.add(color)
+                if len(colors) > 1:
+                    return True
+        return False
+
+    def __init__(self, state, context: dict):
+        super().__init__(state, context)
+        self._irrelevant_tryout = 0
+        self.values = None
+        self.tables = None
+        self.relevant = None
+        self.irrelevant = None
+        self.subtle_path = "./src/server/resources/tasks/prolog/subtle-2.2.pl"
+        self.glgg_path = "./src/server/resources/tasks/prolog/glgg.pl"
+        self.provenance = "LGG_selection"
+
+    #######################
+    #                     #
+    #       Methods       #
+    #                     #
+    #######################
+
     def init(self):
-        self.__irrelevant_tryout = 0
+        self._irrelevant_tryout = 0
         self.values = ValueSet()
         self.converter = StateParser(self.state, self.context)
         (
@@ -222,19 +254,16 @@ class BaseSelectionTask(BaseTask):
             self.irrelevant_color,
         ) = self.extract_parameters_from_state()
 
-    def __init__(self, state, context: dict):
-        super().__init__(state, context)
-        self.__irrelevant_tryout = 0
-        self.values = None
-        self.tables = None
-        self.relevant = None
-        self.irrelevant = None
+    def run(self):
+        prolog_examples, templates, irrelevant_tuples = self.build_data()
+        model = self.build_prolog_model(prolog_examples, templates, irrelevant_tuples)
 
-    #######################
-    #                     #
-    #       Methods       #
-    #                     #
-    #######################
+        table_colors = {}
+        for res in model.query("relevant(X, Y)"):
+            if res["X"] not in table_colors:
+                table_colors[res["X"]] = set()
+            table_colors[res["X"]].add(res["Y"])
+        return table_colors, templates
 
     def assertz_prolog_tuples(self, prolog, templates):
         for key in self.tables:
@@ -259,20 +288,83 @@ class BaseSelectionTask(BaseTask):
         return model
 
     def build_examples(self, tuples, irrelevant):
-        examples = []
         labels = list(tuples.keys())
+        joins = self.detect_join_order(tuples)
+        return self.rec_build_examples([], labels, tuples, joins, irrelevant)
 
-        shared_columns = [x for x in tuples[labels[0]] if x in tuples[labels[1]]]
-        for i, t in tuples[labels[0]].iterrows():
-            other = tuples[labels[1]]
+    def rec_build_examples(self, examples, labels, tuples, joins, irrelevant):
+        if not joins:
+            return examples
+        nexamples = examples
+        left = labels[joins[0][0]]
+        if not nexamples:
+            for i, t in tuples[left].iterrows():
+                nexamples.append({left: t})
+        if nexamples:
+            if left in nexamples[0]:
+                right = labels[joins[0][1]]
+                if right not in nexamples[0]:
+                    shared_columns = joins[0][2]
+                    extended_examples = self.extend_examples(
+                        nexamples, tuples, left, right, shared_columns, irrelevant
+                    )
+                    njoins = joins[1:] if len(joins) > 1 else []
+                    return self.rec_build_examples(
+                        extended_examples, labels, tuples, njoins, irrelevant
+                    )
+        return []
+
+    def extend_examples(
+        self, examples, tuples, left, right, shared_columns, irrelevant
+    ):
+        extended_examples = []
+        for example in examples:
+            right_df = tuples[right]
             for c in shared_columns:
-                other = other[other[c] == t[c]]
-            if other.shape[0] == 0:
-                other = self.extend_example(
-                    labels[1], t, tuples[labels[1]].columns, shared_columns, irrelevant
+                right_df = right_df[right_df[c] == example[left][c]]
+            if right_df.shape[0] == 0:
+                right_df = self.extend_example(
+                    right,
+                    example[left],
+                    tuples[right].columns,
+                    shared_columns,
+                    irrelevant,
                 )
-            examples.append({labels[0]: t, labels[1]: other})
-        return examples
+            nexample = example
+            nexample[right] = right_df
+            extended_examples.append(nexample)
+        return extended_examples
+
+    def detect_join_order(self, tuples):
+        joins = self.detect_joins(tuples)
+        return self.rec_detect_join_order(joins)
+
+    def rec_detect_join_order(self, joins):
+        if not joins:
+            return []
+        for i in range(len(joins)):
+            first = True
+            for j in range(len(joins)):
+                if joins[i][0] == joins[j][1] or (
+                    joins[i][1] == joins[j][1] and len(joins[i][2]) < len(joins[j][2])
+                ):
+                    first = False
+                    break
+            if first:
+                if i == len(joins) - 1:
+                    return [joins[i]] + self.rec_detect_join_order(joins[:-1])
+                return [joins[i]] + self.rec_detect_join_order(
+                    joins[:i] + joins[i + 1 :]
+                )
+        return joins
+
+    def build_model(self, examples):
+        pl = Prolog()
+        pl.consult(self.subtle_path)
+        pl.consult(self.glgg_path)
+        for example in examples:
+            pl.assertz(example[:-1])
+        return pl
 
     def build_prolog_examples(self, examples, store=True):
         facts = []
@@ -322,6 +414,8 @@ class BaseSelectionTask(BaseTask):
     def extract_parameters_from_state(self):
         dfs = self.converter.to_dataframes()
         colors = self.converter.to_colors()
+        if len(colors.keys()) < 2:
+            raise ValueError("Too few colors are given in input (need at least 2)")
         relevant_color = list(colors.keys())[0]
         irrelevant_color = list(colors.keys())[1]
         relevant = colors[relevant_color]
@@ -336,8 +430,8 @@ class BaseSelectionTask(BaseTask):
         return str(string)
 
     def is_irrelevant(self, prolog, lgg, irrelevants):
-        label = str(self.__irrelevant_tryout)
-        self.__irrelevant_tryout += 1
+        label = str(self._irrelevant_tryout)
+        self._irrelevant_tryout += 1
         relevant_rules = self.lggs_to_rules([lgg], False, label)
 
         self.assertz_rules(prolog, relevant_rules)
@@ -422,14 +516,20 @@ class BaseSelectionTask(BaseTask):
             prolog.assertz(rule[:-1])
 
     @staticmethod
-    def build_model(examples):
-        # TODO: test filepath
-        pl = Prolog()
-        pl.consult("./src/server/resources/tasks/prolog/subtle-2.2.pl")
-        pl.consult("./src/server/resources/tasks/prolog/glgg.pl")
-        for example in examples:
-            pl.assertz(example[:-1])
-        return pl
+    def detect_joins(tuples):
+        pair_join = []
+        labels = list(tuples.keys())
+        for i in range(len(labels)):
+            for j in range(i + 1, len(labels)):
+                shared_columns = [
+                    x for x in tuples[labels[i]] if x in tuples[labels[j]]
+                ]
+                if shared_columns:
+                    if tuples[labels[i]].loc[:, shared_columns].duplicated().any():
+                        pair_join.append((j, i, shared_columns))
+                    else:
+                        pair_join.append((i, j, shared_columns))
+        return pair_join
 
     @staticmethod
     def in_indices_set(indices_set, indices):
@@ -437,3 +537,76 @@ class BaseSelectionTask(BaseTask):
             if set(indices) <= s:
                 return True
         return False
+
+
+class MultipleSelectionTask(BaseSelectionTask):
+    def __init__(self, state, context: dict):
+        super().__init__(state, context)
+
+    def description(self) -> str:
+        return "LGG clustering selection"
+
+
+class TestSelectionTask(BaseSelectionTask):
+    def __init__(self, tables, colors):
+        self.tables = tables
+        self.colors = colors
+        self._irrelevant_tryout = 0
+        self.values = ValueSet()
+
+        self.relevant = colors["relevant"]
+        self.irrelevant = colors["irrelevant"]
+        self.relevant_color = "relevant"
+        self.irrelevant_color = "irrelevant"
+
+        self.subtle_path = "./src/server/resources/tasks/prolog/subtle-2.2.pl"
+        self.glgg_path = "./src/server/resources/tasks/prolog/glgg.pl"
+
+    def test(self):
+        table_colors, templates = self.run()
+        print(table_colors)
+
+
+def test():
+    tables = {
+        "sales": pd.DataFrame(
+            [
+                ["Vanilla", "Florence", 610, 190, 670, 1470, "YES"],
+                ["Banana", "Stockholm", 170, 690, 520, 1380, "YES"],
+                ["Chocolate", "Copenhagen", 560, 320, 140, 1020, "YES"],
+                ["Banana", "Berlin", 610, 640, 320, 1570, "NO"],
+                ["Stracciatella", "Florence", 300, 270, 290, 860, "NO"],
+                ["Chocolate", "Milan", 430, 350, "?", "?", "?"],
+                ["Banana", "Aachen", 250, 650, "?", "?", "?"],
+                ["Chocolate", "Brussels", 210, 280, "?", "?", "?"],
+            ],
+            columns=["Type", "City", "June", "July", "Aug", "Total", "Profit"],
+        ),
+        "providers": pd.DataFrame(
+            [
+                ["Vanilla", "Florence", 1, "Cheap", "Bad"],
+                ["Vanilla", "Florence", 2, "Regular", "Good"],
+                ["Stracciatella", "Florence", 1, "Regular", "Great"],
+                ["Chocolate", "Copenhagen", 3, "Cheap", "Good"],
+                ["Chocolate", "Milan", 4, "Regular", "Good"],
+                ["Chocolate", "Milan", 5, "Expensive", "Great"],
+                ["Chocolate", "Brussels", 6, "Regular", "Good"],
+                ["Chocolate", "Brussels", 6, "Expensive", "Good"],
+            ],
+            columns=["Type", "City", "ProviderID", "Price", "Quality"],
+        ),
+    }
+
+    colors = {
+        "relevant": {
+            "sales": ({0, 2, 5, 7}, {0, 1, 2, 3, 4, 6}),
+            "providers": ({0, 1, 3}, {0, 1, 3, 4}),
+        },
+        "irrelevant": {"sales": ({}, {}), "providers": ({5, 7}, {4})},
+    }
+
+    TestSelectionTask(tables, colors).test()
+
+
+if __name__ == "__main__":
+    test()
