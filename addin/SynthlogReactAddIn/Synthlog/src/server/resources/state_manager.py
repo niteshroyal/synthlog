@@ -23,7 +23,7 @@ class Jsonifyable(ABC):
 def jsonify(object_to_jsonify: Optional[Any]):
     try:
         return object_to_jsonify.jsonify() if object_to_jsonify is not None else None
-    except AttributeError:
+    except AttributeError as e:
         return None
 
 
@@ -114,19 +114,19 @@ class BorderFormatting:
 class ObjectFormatting:
     def __init__(
         self,
-        fill: FillFormatting,
-        font: FontFormatting,
-        borders: Dict[str, BorderFormatting],
+        fill: Optional[FillFormatting],
+        font: Optional[FontFormatting],
+        borders: Optional[Dict[str, BorderFormatting]]=None,
     ):
         self.fill = fill
-        self.borders = borders
+        self.borders = borders or {}
         self.font = font
 
     def jsonify(self):
         return {
             "fill": jsonify(self.fill),
             "font": jsonify(self.font),
-            "borders": {k: jsonify(v) for k, v in self.borders.items()},
+            "borders": None if self.borders is None else {k: jsonify(v) for k, v in self.borders.items()},
         }
 
 
@@ -283,6 +283,15 @@ class Prediction(MetadataPropObject):
             "provenance": self.provenance,
         }
 
+class Selection(MetadataPropObject):
+    def __init__(self, cell, provenance, metadata=None):
+        super().__init__(metadata)
+        self.cell = cell
+        self.provenance = provenance
+
+    def jsonify(self):
+        return {"cell": jsonify(self.cell), "provenance": self.provenance}
+
 
 class StateConverter:
     def add_to_json(self, state: State, json_dict: dict) -> dict:
@@ -312,6 +321,14 @@ class PredictionConverter(StateConverter):
         result.update(json_dict)
         return result
 
+class SelectionConverter(StateConverter):
+    def add_to_json(self, state: State, json_dict: dict) -> dict:
+        result = {
+            "selections": [jsonify(o) for o in state.objects if type(o) == Selection]
+        }
+        result.update(json_dict)
+        return result
+
 
 class StateManager:
     def __init__(self, db_path=""):
@@ -329,6 +346,7 @@ class StateManager:
         self.converters = [
             TableConverter(),
             PredictionConverter(),
+            SelectionConverter(),
         ]  # type: List[StateConverter]
 
         try:
