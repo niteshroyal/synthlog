@@ -25,7 +25,7 @@ except ImportError:
 try:
     from tasks import selection_tasks
 except ImportError:
-        selection_tasks = None
+    selection_tasks = None
 
 
 class TaskManager:

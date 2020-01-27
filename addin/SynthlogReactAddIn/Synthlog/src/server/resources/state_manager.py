@@ -116,7 +116,7 @@ class ObjectFormatting:
         self,
         fill: Optional[FillFormatting],
         font: Optional[FontFormatting],
-        borders: Optional[Dict[str, BorderFormatting]]=None,
+        borders: Optional[Dict[str, BorderFormatting]] = None,
     ):
         self.fill = fill
         self.borders = borders or {}
@@ -126,7 +126,9 @@ class ObjectFormatting:
         return {
             "fill": jsonify(self.fill),
             "font": jsonify(self.font),
-            "borders": None if self.borders is None else {k: jsonify(v) for k, v in self.borders.items()},
+            "borders": None
+            if self.borders is None
+            else {k: jsonify(v) for k, v in self.borders.items()},
         }
 
 
@@ -283,6 +285,7 @@ class Prediction(MetadataPropObject):
             "provenance": self.provenance,
         }
 
+
 class Selection(MetadataPropObject):
     def __init__(self, cell, provenance, metadata=None):
         super().__init__(metadata)
@@ -320,6 +323,7 @@ class PredictionConverter(StateConverter):
         }
         result.update(json_dict)
         return result
+
 
 class SelectionConverter(StateConverter):
     def add_to_json(self, state: State, json_dict: dict) -> dict:
