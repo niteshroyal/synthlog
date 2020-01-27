@@ -203,10 +203,16 @@ class Table(MetadataPropObject):
 
 class State(MetadataPropObject):
     def __init__(
-        self, filepath: str, tables: List[Table], objects: List[Jsonifyable], metadata
+        self,
+        filepath: str,
+        sheet_name: str,
+        tables: List[Table],
+        objects: List[Jsonifyable],
+        metadata,
     ):
         super().__init__(metadata)
         self.filepath = filepath
+        self.sheet_name = sheet_name
         self.tables = tables
         self.objects = objects
         self.id = None
@@ -258,7 +264,7 @@ class State(MetadataPropObject):
         return res
 
     def empty_copy(self):
-        return State(filepath=self.filepath, tables=[], objects=[], metadata=None)
+        return StateManager.create_empty_state(self.filepath, self.sheet_name)
 
 
 class Prediction(MetadataPropObject):
@@ -340,12 +346,18 @@ class StateManager:
         self.db.close()
 
     @staticmethod
-    def create_empty_state(filename):
-        return State(filepath=filename, tables=[], objects=[], metadata=None)
+    def create_empty_state(filename, sheet_name):
+        return State(
+            filepath=filename,
+            sheet_name=sheet_name,
+            tables=[],
+            objects=[],
+            metadata=None,
+        )
 
-    def get_latest_state(self, file_path: str) -> Optional[State]:
+    def get_latest_state(self, filename, sheet_name) -> Optional[State]:
         if not self._latest_state_loaded:
-            self.load_latest_state()
+            self.load_latest_state(filename, sheet_name)
             self._latest_state_loaded = True
         return self._latest_state
 
@@ -355,10 +367,15 @@ class StateManager:
         else:
             return None
 
-    def load_latest_state(self):
+    @staticmethod
+    def get_key(filename, sheet_name):
+        return f"current*{filename}*{sheet_name}"
+
+    def load_latest_state(self, filename, sheet_name):
         if self.db:
-            if "latest" in self.db:
-                latest_key = str(self.db["latest"])
+            key = StateManager.get_key(filename, sheet_name)
+            if key in self.db:
+                latest_key = str(self.db[key])
                 if latest_key in self.db:
                     try:
                         self._latest_state = self.db[latest_key]
@@ -367,17 +384,17 @@ class StateManager:
                 else:
                     self._latest_state = None
 
-    def set_latest(self, state):
+    def set_latest(self, state: State):
         self._latest_state_loaded = True
         self._latest_state = state
-        self.db["latest"] = str(state.id)
+        self.db[StateManager.get_key(state.filepath, state.sheet_name)] = str(state.id)
 
     def add_state(self, state):
         self._latest_state = state
         state.id = len(self.db) + 1
         state_id = str(state.id)
         self.db[state_id] = state
-        self.db["latest"] = state.id
+        self.db[StateManager.get_key(state.filepath, state.sheet_name)] = state.id
         return state.id
 
     def jsonify(self, state: State):

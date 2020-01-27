@@ -12,6 +12,9 @@ if __name__ == "__main__":
     action_initialize = "initialize"
     init_parser = subparsers.add_parser(action_initialize)
     init_parser.add_argument("file_path", help="Path to the spreadsheet file", type=str)
+    init_parser.add_argument(
+        "sheet_name", help="Name of the sheet", type=str, default="default"
+    )
 
     action_load = "load"
     load_parser = subparsers.add_parser(action_load)
@@ -25,12 +28,10 @@ if __name__ == "__main__":
     # noinspection PyBroadException
     try:
         if args.action == action_initialize:
-            state = manager.get_latest_state(
-                args.file_path
-            )  # TODO Make filename dependent
+            state = manager.get_latest_state(args.file_path, args.sheet_name)
 
             if state is None:
-                state = manager.create_empty_state(args.file_path)
+                state = manager.create_empty_state(args.file_path, args.sheet_name)
                 manager.add_state(state)
                 assert state is not None
 
